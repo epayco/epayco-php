@@ -6,7 +6,7 @@
 
     class Client
     {
-        const BASE_URL = "https://api.getmango.com/v1";
+        const BASE_URL = "";
         public function request(
             $method,
             $url,
