@@ -2,22 +2,23 @@
 
     namespace Epayco;
 
-    //require_once "errors.php";
+    require 'vendor/autoload.php';
+    require_once "errors.php";
 
     class Client
     {
-        const BASE_URL = "";
+        const BASE_URL = "http://localhost:3000";
         public function request(
             $method,
             $url,
             $api_key,
             $data = null,
-            $headers= array("Content-Type" => "application/json", "Accept" => "application/json")
+            $headers= array("Content-Type" => "application/json", "Accept" => "application/json", "type" => "sdk")
         ) {
             try {
                 $options = array(
-                'auth' => new \Requests_Auth_Basic(array($api_key, ''))
-            );
+                    'auth' => new \Requests_Auth_Basic(array($api_key, ''))
+                );
                 if ($method == "GET") {
                     $url_params = is_array($data) ? '?' . http_build_query($data) : '';
                     $response = \Requests::get(Client::BASE_URL . $url . $url_params, $headers, $options);
