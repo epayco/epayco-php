@@ -14,6 +14,15 @@
        }
 
 
+       /**
+        * Base Epayco Exception
+        */
+        class TestException extends \Exception
+        {
+            protected $message = "Test value invalid";
+        }
+
+
       /**
        * Input validation error
        */
