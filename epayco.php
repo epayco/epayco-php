@@ -3,6 +3,7 @@
 namespace Epayco;
 
 require_once "client.php";
+require_once "errors.php";
 
 /**
  * Global class constructor
@@ -29,9 +30,10 @@ class Epayco
         $this->api_key = $options["apiKey"];
         $this->private_key = $options["privateKey"];
         $this->test = $options["test"] ? "TRUE" : "FALSE";
+        $this->lang = $options["lenguage"];
 
-        if (!$this->api_key) {
-            throw new InvalidApiKey();
+        if (!$this->api_key && !$this->private_key && $this->test && $this->lang) {
+            throw new ErrorException($this->lang, 100);
         }
 
         $this->token = new Token($this);
@@ -39,6 +41,7 @@ class Epayco
         $this->plan = new Plan($this);
         $this->subscriptions = new Subscriptions($this);
         $this->bank = new Bank($this);
+        $this->cash = new Cash($this);
     }
 }
 
@@ -76,7 +79,8 @@ class Token extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 }
@@ -100,7 +104,8 @@ class Customers extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -118,7 +123,8 @@ class Customers extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -135,7 +141,8 @@ class Customers extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 }
@@ -159,7 +166,8 @@ class Plan extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -177,7 +185,8 @@ class Plan extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -194,7 +203,8 @@ class Plan extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
      /**
@@ -212,7 +222,8 @@ class Plan extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 }
@@ -236,7 +247,8 @@ class Subscriptions extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -254,7 +266,8 @@ class Subscriptions extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -271,7 +284,8 @@ class Subscriptions extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -291,7 +305,8 @@ class Subscriptions extends Resource
                ),
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = false
+               $switch = false,
+               $lang = $this->epayco->lang
         );
     }
 }
@@ -314,7 +329,8 @@ class Bank extends Resource
                $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = true
+               $switch = true,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -332,7 +348,8 @@ class Bank extends Resource
                $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
-               $switch = true
+               $switch = true,
+               $lang = $this->epayco->lang
         );
     }
 
@@ -350,7 +367,49 @@ class Bank extends Resource
                 $uid,
                 $private_key = $this->epayco->private_key,
                 $test = $this->epayco->test,
-                $switch = true
+                $switch = true,
+                $lang = $this->epayco->lang
+        );
+    }
+}
+
+/**
+ * Cash payment methods
+ */
+class Cash extends Resource
+{
+    /**
+     * Return data payment cash
+     * @param  String $type method payment
+     * @param  String $options data transaction
+     * @return object
+     */
+    public function create($type = null, $options = null)
+    {
+        $url = null;
+        switch ($type) {
+            case "efecty":
+                $url = "/restpagos/pagos/efecties.json";
+                break;
+            case "baloto":
+                $url = "/restpagos/pagos/balotos.json";
+                break;
+            case "gana":
+                $url = "/restpagos/pagos/ganas.json";
+                break;
+            default:
+                throw new ErrorException($this->epayco->lang, 109);
+                break;
+        }
+        return $this->request(
+                "POST",
+                $url,
+                $api_key = $this->epayco->api_key,
+                $options,
+                $private_key = $this->epayco->private_key,
+                $test = $this->epayco->test,
+                $switch = true,
+                $lang = $this->epayco->lang
         );
     }
 }

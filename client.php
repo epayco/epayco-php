@@ -3,8 +3,11 @@
     namespace Epayco;
 
     require "vendor/autoload.php";
-    require_once "errors.php";
+    // require_once "errors.php";
 
+    /**
+     * Client conection api epayco
+     */
     class Client
     {
         const BASE_URL = "http://localhost:3000";
@@ -12,6 +15,17 @@
         const IV = "0000000000000000";
         const LENGUAGE = "php";
 
+        /**
+         * Request api epayco
+         * @param  String $method      method petition
+         * @param  String $url         url request api epayco
+         * @param  String $api_key     public key commerce
+         * @param  Object $data        data petition
+         * @param  String $private_key private key commerce
+         * @param  String $test        type petition production or testing
+         * @param  Boolean $switch     type api petition
+         * @return Object
+         */
         public function request(
             $method,
             $url,
@@ -19,14 +33,15 @@
             $data = null,
             $private_key,
             $test,
-            $switch
+            $switch,
+            $lang
         ) {
             $headers= array("Content-Type" => "application/json", "Accept" => "application/json", "type" => "sdk");
             try {
                 $options = array(
                     'auth' => new \Requests_Auth_Basic(array($api_key, ''))
                 );
-                $aes = new PaycoAes($private_key, Client::IV);
+                $aes = new PaycoAes($private_key, Client::IV, $lang);
                 $encryptData = null;
                 if ($method == "GET") {
                     if ($switch) {
@@ -65,7 +80,7 @@
                     $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
                 }
             } catch (\Exception $e) {
-                throw new UnableToConnect();
+                throw new ErrorException($lang, 101);
             }
             if ($response->status_code >= 200 && $response->status_code <= 206) {
                 if ($method == "DELETE") {
@@ -81,26 +96,29 @@
                     $code = key($error);
                     $message = current($error);
                 } catch (\Exception $e) {
-                    throw new UnhandledError($response->body, $response->status_code);
+                    throw new ErrorException($lang, 102);
                 }
-                throw new InputValidationError($message, $code);
+                throw new ErrorException($lang, 103);
             }
             if ($response->status_code == 401) {
-                throw new AuthenticationError();
+                throw new ErrorException($lang, 104);
             }
             if ($response->status_code == 404) {
-                throw new NotFound();
+                throw new ErrorException($lang, 105);
             }
             if ($response->status_code == 403) {
-                throw new InvalidApiKey();
+                throw new ErrorException($lang, 106);
             }
             if ($response->status_code == 405) {
-                throw new MethodNotAllowed();
+                throw new ErrorException($lang, 107);
             }
-            throw new UnhandledError($response->body, $response->status_code);
+            throw new ErrorException($lang, 102);
         }
     }
 
+    /**
+     * Epayco library encrypt based in AES
+     */
     class PaycoAes
     {
         private $_cipher = MCRYPT_RIJNDAEL_128;
@@ -108,14 +126,14 @@
         private $_key;
         private $_initializationVectorSize;
 
-        public function __construct($key, $iv)
+        public function __construct($key, $iv, $lang)
         {
             $this->_key = $key;
             $this->iv=$iv;
             $this->_initializationVectorSize = mcrypt_get_iv_size($this->_cipher, $this->_mode);
 
             if (strlen($key) > ($keyMaxLength = mcrypt_get_key_size($this->_cipher, $this->_mode))) {
-                throw new \InvalidArgumentException("The key length must be less or equal than $keyMaxLength.");
+                throw new ErrorException($lang, 108);
             }
         }
 

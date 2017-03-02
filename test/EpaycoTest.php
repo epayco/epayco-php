@@ -5,6 +5,7 @@
     $epayco = new Epayco\Epayco(array(
         "apiKey" => "491d6a0b6e992cf924edd8d3d088aff1",
         "privateKey" => "268c8e0162990cf2ce97fa7ade2eff5a",
+        "lenguage" => "ES",
         "test" => true
     ));
 
@@ -120,3 +121,24 @@
     //Get ransaction
     // $transaction = $epayco->bank->pseTransaction("1216019");
     // var_dump($transaction->data);
+
+    //Cash
+    // $cash = $epayco->cash->create("efecty", array(
+    //         "tipo_doc" => "CC",
+    //         "documento" => "10358519",
+    //         "nombres" => "PRUEBAS",
+    //         "apellidos" => "PAYCO",
+    //         "factura" => "1472050778",
+    //         "email" => "no-responder@payco.co",
+    //         "ip" => "186.116.10.133",
+    //         "valor" => "50000",
+    //         "iva" => "0",
+    //         "baseiva" => "0",
+    //         "moneda" => "COP",
+    //         "fechaexpiracion" => "2017-03-03",
+    //         "url_respuesta" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+    //         "url_confirmacion" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+    //         "metodoconfirmacion" => "GET",
+    // ));
+    //
+    // var_dump($cash);

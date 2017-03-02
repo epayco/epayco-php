@@ -1,86 +1,19 @@
 <?php
-      /**
-       * Epayco Library Exceptions
-       */
 
-      namespace Epayco;
+    namespace Epayco;
 
-      /**
-       * Base Epayco Exception
-       */
-       class EpaycoException extends \Exception
-       {
-           protected $message = "Base Epayco Exception";
-       }
+    const ERRORS_URL = "http://localhost:3000/errors.json";
 
+    class EpaycoException extends \Exception
+    {
 
-       /**
-        * Base Epayco Exception
-        */
-        class TestException extends \Exception
+    }
+
+    class ErrorException extends EpaycoException
+    {
+        public function __toString()
         {
-            protected $message = "Test value invalid";
+            $errors = json_decode(file_get_contents(ERRORS_URL), true);
+            return __CLASS__ . ": {$errors[(string)$this->code][$this->message]}\n";
         }
-
-
-      /**
-       * Input validation error
-       */
-      class InputValidationError extends EpaycoException
-      {
-          protected $message = "Input validation error";
-      }
-
-
-      /**
-       * Authentication error
-       */
-      class AuthenticationError extends EpaycoException
-      {
-          protected $message = "Authentication error";
-      }
-
-
-      /**
-       * Resource not found
-       */
-      class NotFound extends EpaycoException
-      {
-          protected $message = "Resource not found";
-      }
-
-
-      /**
-       * Method not allowed
-       */
-      class MethodNotAllowed extends EpaycoException
-      {
-          protected $message = "Method not allowed";
-      }
-
-
-      /**
-       * Unhandled error
-       */
-      class UnhandledError extends EpaycoException
-      {
-          protected $message = "Unhandled error";
-      }
-
-
-      /**
-       * Invalid API Key
-       */
-      class InvalidApiKey extends EpaycoException
-      {
-          protected $message = "Invalid API Key";
-      }
-
-
-      /**
-       * Unable to connect to Epayco API
-       */
-      class UnableToConnect extends EpaycoException
-      {
-          protected $message = "Unable to connect to Epayco API";
-      }
+    }
