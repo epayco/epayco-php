@@ -2,7 +2,7 @@
 
     namespace Epayco;
 
-    const ERRORS_URL = "http://localhost:3000/errors.json";
+    const ERRORS_URL = "https://s3-us-west-2.amazonaws.com/epayco/message_api/errors.json";
 
     class EpaycoException extends \Exception
     {
