@@ -10,7 +10,7 @@
      */
     class Client
     {
-        const BASE_URL = "http://localhost:3000";
+        const BASE_URL = "https://api.secure.payco.co";
         const BASE_URL_SECURE = "https://secure.payco.co";
         const IV = "0000000000000000";
         const LENGUAGE = "php";
@@ -36,13 +36,16 @@
             $switch,
             $lang
         ) {
+          $dataSet = null;
+          if ($switch && is_array($data)) {
+              $util = new Util();
+              $data = $util->setKeys($data);
+          }
             $headers= array("Content-Type" => "application/json", "Accept" => "application/json", "type" => "sdk");
             try {
                 $options = array(
                     'auth' => new \Requests_Auth_Basic(array($api_key, ''))
                 );
-                $aes = new PaycoAes($private_key, Client::IV, $lang);
-                $encryptData = null;
                 if ($method == "GET") {
                     if ($switch) {
                         $addData = array(
@@ -60,6 +63,8 @@
                     }
                 } elseif ($method == "POST") {
                     if ($switch) {
+                        $aes = new PaycoAes($private_key, Client::IV, $lang);
+                        $encryptData = null;
                         $encryptData = $aes->encryptArray($data);
                         $adddata = array(
                             "public_key" => $api_key,
@@ -115,6 +120,25 @@
             throw new ErrorException($lang, 102);
         }
     }
+
+    class Util
+    {
+        public function setKeys($array)
+        {
+          $aux = array();
+          $file = dirname(__FILE__). "/utils/key_lang.json";
+          $values = json_decode(file_get_contents($file), true);
+          foreach ($array as $key => $value) {
+              if (array_key_exists($key, $values)) {
+                  $aux[$values[$key]] = $value;
+              } else {
+                  $aux[$key] = $value;
+              }
+          }
+          return $aux;
+        }
+    }
+
 
     /**
      * Epayco library encrypt based in AES
