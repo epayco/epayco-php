@@ -1,6 +1,6 @@
-# Sdk Epayco PHP
+# Epayco PHP
 
-Esta librería incluye los métodos necesarios para integrar [Epayco API](https://epayco.co/)
+Esta librería incluye los métodos necesarios para integrar el API de [Epayco](https://epayco.co/)
 
 ## Instalación
 
@@ -10,7 +10,7 @@ Esta librería incluye los métodos necesarios para integrar [Epayco API](https:
 
 ### Instalación con composer
 
-Si estás usando [Composer](https://github.com/composer/composer), agrega a tu composer.json `require`:
+Si estás usando [Composer](https://github.com/composer/composer), agrega la dependencia en `require`:
 
 ```javascript
 {
@@ -30,4 +30,19 @@ require 'vendor/autoload.php';
 
 ```bash
 $ git clone https://github.com/epayco/epayco-php.git
+```
+
+## Documentación
+
+Documentación disponible en [Documentación](https://epayco.co/docs/introduction/)
+
+## Uso
+
+```php
+  $epayco = new Epayco\Epayco(array(
+      "apiKey" => "YOU_PUBLIC_API_KEY",
+      "privateKey" => "YOU_PRIVATE_API_KEY",
+      "lenguage" => "ES",
+      "test" => true
+  ));
 ```
