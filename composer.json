@@ -1,6 +1,6 @@
 {
     "name": "epayco/epayco-php",
-    "type": "Sdk",
+    "type": "library",
     "description": "Epayco API client for PHP",
     "keywords": ["epayco", "api"],
     "homepage": "https://github.com/epayco/epayco-php",
@@ -14,9 +14,11 @@
         "rmccue/requests": ">=1.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "4.8.9"
+        "phpunit/phpunit": "^5.7"
     },
     "autoload": {
-        "classmap": ["epayco.php"]
+        "psr-4": {
+            "Epayco\\" : "src/"
+        }
     }
 }

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit colors="true">
+<phpunit
+        colors="true"
+        bootstrap="vendor/autoload.php">
     <testsuites>
-        <testsuite name="Epayco PHP Test Suite">
-            <directory>./tests/</directory>
+        <testsuite>
+            <directory>tests</directory>
         </testsuite>
     </testsuites>
 </phpunit>
