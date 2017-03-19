@@ -14,7 +14,7 @@ class Util
     public function setKeys($array)
     {
         $aux = array();
-        $file = dirname(__FILE__). "/utils/key_lang.json";
+        $file = dirname(__FILE__). "/Utils/key_lang.json";
         $values = json_decode(file_get_contents($file), true);
         foreach ($array as $key => $value) {
             if (array_key_exists($key, $values)) {
