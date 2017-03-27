@@ -34,7 +34,7 @@ $ git clone https://github.com/epayco/epayco-php.git
 
 ## Documentación
 
-Documentación disponible en [Documentación](https://epayco.co/docs/introduction/)
+Documentación disponible en [epayco.co](https://epayco.co/docs/introduction/)
 
 ## Uso
 

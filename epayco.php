@@ -42,6 +42,7 @@ class Epayco
         $this->subscriptions = new Subscriptions($this);
         $this->bank = new Bank($this);
         $this->cash = new Cash($this);
+        $this->charge = new Charge($this);
     }
 }
 
@@ -118,7 +119,7 @@ class Customers extends Resource
     {
         return $this->request(
                "GET",
-               "/payment/v1/customer/" . $uid . "/",
+               "/payment/v1/customer/" . $this->epayco->api_key . "/" . $uid . "/",
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
@@ -129,7 +130,7 @@ class Customers extends Resource
     }
 
     /**
-     * Get list customer rom client epayco
+     * Get list customer from client epayco
      * @return object
      */
     public function getList()
@@ -139,6 +140,24 @@ class Customers extends Resource
                "/payment/v1/customers/" . $this->epayco->api_key . "/",
                $api_key = $this->epayco->api_key,
                $options = null,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang
+        );
+    }
+
+    /**
+     * Update customer from client epayco
+     * @return object
+     */
+    public function update($uid, $options = null)
+    {
+        return $this->request(
+               "POST",
+               "/payment/v1/customer/edit/" . $this->epayco->api_key . "/" . $uid . "/",
+               $api_key = $this->epayco->api_key,
+               $options,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
                $switch = false,
@@ -207,6 +226,7 @@ class Plan extends Resource
                $lang = $this->epayco->lang
         );
     }
+
      /**
       * Update plan
       * @param  String $uid     id plan
@@ -226,6 +246,26 @@ class Plan extends Resource
                $lang = $this->epayco->lang
         );
     }
+
+    /**
+     * remove plan
+     * @param  String $uid     id plan
+     * @param  object $options contenten update
+     * @return object
+     */
+   public function remove($uid, $options = null)
+   {
+       return $this->request(
+              "POST",
+              "/recurring/v1/plan/remove/" . $this->epayco->api_key . "/" . $uid . "/",
+              $api_key = $this->epayco->api_key,
+              $options = null,
+              $private_key = $this->epayco->private_key,
+              $test = $this->epayco->test,
+              $switch = false,
+              $lang = $this->epayco->lang
+       );
+   }
 }
 
 /**
@@ -309,6 +349,25 @@ class Subscriptions extends Resource
                $lang = $this->epayco->lang
         );
     }
+
+    /**
+     * Create subscription
+     * @param  object $options data client and plan
+     * @return object
+     */
+    public function charge($options = null)
+    {
+        return $this->request(
+               "POST",
+               "/payment/v1/charge/subscription/create",
+               $api_key = $this->epayco->api_key,
+               $options,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang
+        );
+    }
 }
 
 /**
@@ -362,7 +421,7 @@ class Bank extends Resource
     {
         return $this->request(
                 "GET",
-                "/restpagos/pse/transactioninfomation.json",
+                "/restpagos/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
                 $api_key = $this->epayco->api_key,
                 $uid,
                 $private_key = $this->epayco->private_key,
@@ -406,6 +465,69 @@ class Cash extends Resource
                 $url,
                 $api_key = $this->epayco->api_key,
                 $options,
+                $private_key = $this->epayco->private_key,
+                $test = $this->epayco->test,
+                $switch = true,
+                $lang = $this->epayco->lang
+        );
+    }
+
+    /**
+     * Return data transaction
+     * @param  String $uid id transaction
+     * @return object
+     */
+    public function transaction($uid = null)
+    {
+        return $this->request(
+                "GET",
+                "/restpagos/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
+                $api_key = $this->epayco->api_key,
+                $uid,
+                $private_key = $this->epayco->private_key,
+                $test = $this->epayco->test,
+                $switch = true,
+                $lang = $this->epayco->lang
+        );
+    }
+}
+
+/**
+ * Cash payment methods
+ */
+class Charge extends Resource
+{
+    /**
+     * Create charge
+     * @param  object $options data charge
+     * @return object
+     */
+    public function create($options = null)
+    {
+        return $this->request(
+               "POST",
+               "/payment/v1/charge/create",
+               $api_key = $this->epayco->api_key,
+               $options,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang
+        );
+    }
+
+    /**
+     * Return data transaction
+     * @param  String $uid id transaction
+     * @return object
+     */
+    public function transaction($uid = null)
+    {
+        return $this->request(
+                "GET",
+                "/restpagos/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
+                $api_key = $this->epayco->api_key,
+                $uid,
                 $private_key = $this->epayco->private_key,
                 $test = $this->epayco->test,
                 $switch = true,

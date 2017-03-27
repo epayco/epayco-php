@@ -2,8 +2,7 @@
 
     namespace Epayco;
 
-    require "vendor/autoload.php";
-    // require_once "errors.php";
+require "vendor/autoload.php";
 
     /**
      * Client conection api epayco
@@ -36,51 +35,44 @@
             $switch,
             $lang
         ) {
-          $dataSet = null;
-          if ($switch && is_array($data)) {
-              $util = new Util();
-              $data = $util->setKeys($data);
-          }
+
+            /**
+             * Resources ip, traslate keys
+             */
+            $util = new Util();
+
+            /**
+             * Switch traslate keys array petition in secure
+             */
+            if ($switch && is_array($data)) {
+                $data = $util->setKeys($data);
+            }
+
+            /**
+             * Set headers
+             */
             $headers= array("Content-Type" => "application/json", "Accept" => "application/json", "type" => "sdk");
+
             try {
                 $options = array(
                     'auth' => new \Requests_Auth_Basic(array($api_key, ''))
                 );
                 if ($method == "GET") {
                     if ($switch) {
-                        $addData = array(
-                              "public_key" => $api_key,
-                              "i" => base64_encode(Client::IV),
-                              "transactionID" => $data,
-                              "lenguaje" => Client::LENGUAGE
-                        );
-                        $endData = $encryptData ? array_merge($encryptData, $addData) : $addData;
-                        $url_params = is_array($endData) ? '?' . http_build_query($endData) : '';
-                        $response = \Requests::get(Client::BASE_URL_SECURE . $url . $url_params, $headers, $options);
+                        $response = \Requests::get(Client::BASE_URL_SECURE . $url, $headers, $options);
                     } else {
-                        $url_params = is_array($data) ? '?' . http_build_query($data) : '';
-                        $response = \Requests::get(Client::BASE_URL . $url . $url_params, $headers, $options);
+                        $response = \Requests::get(Client::BASE_URL . $url, $headers, $options);
                     }
                 } elseif ($method == "POST") {
                     if ($switch) {
-                        $aes = new PaycoAes($private_key, Client::IV, $lang);
-                        $encryptData = null;
-                        $encryptData = $aes->encryptArray($data);
-                        $adddata = array(
-                            "public_key" => $api_key,
-                            "i" => base64_encode(Client::IV),
-                            "enpruebas" => $test,
-                            "lenguaje" => Client::LENGUAGE,
-                            "p" => "",
-                        );
-                        $enddata = array_merge($encryptData, $adddata);
-                        $url_params = is_array($enddata) ? '?' . http_build_query($enddata) : '';
-                        $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($enddata), $options);
+                        var_dump('secure');
+                        $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key);
+                        $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                     } else {
+                        $data["ip"] = getHostByName(getHostName());
+                        $data["test"] = $test;
                         $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                     }
-                } elseif ($method == "PATCH") {
-                    $response = \Requests::patch(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                 } elseif ($method == "DELETE") {
                     $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
                 }
@@ -125,20 +117,40 @@
     {
         public function setKeys($array)
         {
-          $aux = array();
-          $file = dirname(__FILE__). "/utils/key_lang.json";
-          $values = json_decode(file_get_contents($file), true);
-          foreach ($array as $key => $value) {
-              if (array_key_exists($key, $values)) {
-                  $aux[$values[$key]] = $value;
-              } else {
-                  $aux[$key] = $value;
-              }
-          }
-          return $aux;
+            $aux = array();
+            $file = dirname(__FILE__). "/utils/key_lang.json";
+            $values = json_decode(file_get_contents($file), true);
+            foreach ($array as $key => $value) {
+                if (array_key_exists($key, $values)) {
+                    $aux[$values[$key]] = $value;
+                } else {
+                    $aux[$key] = $value;
+                }
+            }
+            return $aux;
+        }
+
+        public function mergeSet($data, $test, $lang, $private_key, $api_key)
+        {
+            $data["ip"] = getHostByName(getHostName());
+            $data["test"] = $test;
+
+            /**
+             * Init AES
+             * @var PaycoAes
+             */
+            $aes = new PaycoAes($private_key, Client::IV, $lang);
+            $encryptData = $aes->encryptArray($data);
+            $adddata = array(
+                "public_key" => $api_key,
+                "i" => base64_encode(Client::IV),
+                "enpruebas" => $test,
+                "lenguaje" => Client::LENGUAGE,
+                "p" => "",
+            );
+            return array_merge($encryptData, $adddata);
         }
     }
-
 
     /**
      * Epayco library encrypt based in AES

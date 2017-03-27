@@ -54,7 +54,6 @@
          */
         protected function createClient()
         {
-            var_dump(rand());
             $token = $this->createToken();
             $client = $this->epayco->customer->create(array(
                 "token_card" => $token,
@@ -125,6 +124,12 @@
             $this->assertGreaterThanOrEqual(1, count($response));
         }
 
+        public function testRemovePlan()
+        {
+            $response = $this->epayco->plan->remove("coursereact");
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
         /* Subscriptions */
         public function testCreateSubscription()
         {
@@ -132,7 +137,9 @@
             $sub = $this->epayco->subscriptions->create(array(
                   "id_plan" => "coursereact",
                   "customer" => $data["clientId"],
-                  "token_card" => $data["token"]
+                  "token_card" => $data["token"],
+                  "doc_type" => "CC",
+                  "doc_number" => "5234567"
             ));
             $this->assertTrue(strlen($sub->data->suscription) > 0);
         }
@@ -159,6 +166,20 @@
             $this->assertGreaterThanOrEqual(1, count($response));
         }
 
+        public function testPaySubscription()
+        {
+            $data = $this->createClient();
+            $sub = $this->epayco->subscriptions->charge(array(
+                  "id_plan" => "coursereact",
+                  "customer" => $data["clientId"],
+                  "token_card" => $data["token"],
+                  "doc_type" => "CC",
+                  "doc_number" => "5234567"
+            ));
+            $this->assertTrue(strlen($sub->data->suscription) > 0);
+        }
+
+        /* PSE */
         public function testPseCreate()
         {
             $response = $this->epayco->bank->pse(array(
@@ -182,6 +203,74 @@
                     "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
                     "method_confirmation" => "GET",
             ));
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
+        public function testPseGet()
+        {
+            $response = $this->epayco->bank->pseTransaction("249005850");
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
+        /* CASH */
+        public function testCashCreate()
+        {
+              $response = $this->epayco->cash->create("efecty", array(
+                      "invoice" => "1472050778",
+                      "description" => "pay test",
+                      "value" => "20000",
+                      "tax" => "0",
+                      "tax_base" => "0",
+                      "currency" => "COP",
+                      "type_person" => "0",
+                      "doc_type" => "CC",
+                      "doc_number" => "10358519",
+                      "name" => "testing",
+                      "last_name" => "PAYCO",
+                      "email" => "test@mailinator.com",
+                      "cell_phone" => "3010000001",
+                      "end_date" => "2017-12-05",
+                      "ip" => "186.116.10.133",
+                      "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+                      "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+                      "method_confirmation" => "GET"
+            ));
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
+        public function testCashGet()
+        {
+            $response = $this->epayco->cash->transaction("249005850");
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
+        /* Payment */
+
+        public function testChargeCreate()
+        {
+            $response = $this->epayco->charge->create(array(
+                  "token_card" => "oadJSK4PzCykvG9Zr",
+                  "customer_id" => "3gFCbw6bfj2EZF7Av",
+                  "doc_type" => "CC",
+                  "doc_number" => "1035851980",
+                  "name" => "John",
+                  "last_name" => "Doe",
+                  "email" => "example@email.com",
+                  "ip" => "192.198.2.114",
+                  "bill" => "OR-1234",
+                  "description" => "Test Payment",
+                  "value" => "116000",
+                  "tax" => "16000",
+                  "tax_base" => "100000",
+                  "currency" => "COP",
+                  "dues" => "12"
+            ));
+            $this->assertGreaterThanOrEqual(1, count($response));
+        }
+
+        public function testCashGet()
+        {
+            $response = $this->epayco->charge->transaction("249005850");
             $this->assertGreaterThanOrEqual(1, count($response));
         }
     }
