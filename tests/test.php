@@ -1,140 +1,198 @@
 <?php
 
-require "../epayco.php";
+include ('./vendor/autoload.php');
 
-$epayco = new Epayco\Epayco(array(
-          "apiKey" => "491d6a0b6e992cf924edd8d3d088aff1",
-          "privateKey" => "268c8e0162990cf2ce97fa7ade2eff5a",
-          "lenguage" => "ES",
-          "test" => true
-      ));
+use Epayco\Epayco;
+use Epayco\Client;
 
-  // $testCard = array(
-  //     "card[number]" => '4575623182290326',
-  //     "card[exp_year]" => "2017",
-  //     "card[exp_month]" => "07",
-  //     "card[cvc]" => "123"
-  // );
-  //
-  // $token = $epayco->token->create($testCard);
-  //
-  // var_dump($token);
+class AccessSDKTest extends PHPUnit_Framework_TestCase
+{
 
-  // $customer = $epayco->customer->create(array(
-  //     "token_card" => "oadJSK4PzCykvG9Zr",
-  //     "name" => "Joe Doe",
-  //     "email" => "joe" . rand() . "@payco.co",
-  //     "phone" => "3005234321",
-  //     "default" => true
-  // ));
+    protected $epayco;
+    protected $apiKey = "491d6a0b6e992cf924edd8d3d088aff1";
+    protected $privateKey = "268c8e0162990cf2ce97fa7ade2eff5a";
+    protected $lenguage = "ES";
+    protected $test = true;
+    protected $client;
+    protected $testCard = array(
+                    "card[number]" => '4575623182290326',
+                    "card[exp_year]" => "2017",
+                    "card[exp_month]" => "07",
+                    "card[cvc]" => "123");
+    protected $token;
+    /**
+     * Init sdk epayco
+     */
+    protected function setUp()
+    {
+        $this->epayco = new Epayco(array(
+            "apiKey" => $this->apiKey,
+            "privateKey" => $this->privateKey,
+            "lenguage" => $this->lenguage,
+            "test" => $this->test
+        ));
+        $this->client = new Client();
+    }
 
-// $customer = $epayco->customer->get("8ShPpuPmPF6rHRBme");
-// $customer = $epayco->customer->getList();
-// $customer = $epayco->customer->update("3gFCbw6bfj2EZF7Av", array('name' => 'julianc'));
-//
-//   var_dump($customer);
+    /**
+     * Create token credit card form tokenization
+     * @return object
+     */
+    protected function createToken()
+    {
 
-// $plan = $epayco->plan->create(array(
-//       "id_plan" => "coursereact",
-//       "name" => "Course react js",
-//       "description" => "Course react and redux",
-//       "amount" => 30000,
-//       "currency" => "cop",
-//       "interval" => "month",
-//       "interval_count" => 1,
-//       "trial_days" => 30
-// ));
+        $response = $this->client->request(
+            "POST",
+            "/v1/tokens",
+            $api_key = $this->apiKey,
+            $options = $this->testCard,
+            $private_key = $this->privateKey,
+            $test = $this->test,
+            $switch = false,
+            $lang = $this->lenguage
+        );
+        $this->token = $response->id;
+    }
 
-// $plan = $epayco->plan->get("coursereact");
-// $plan = $epayco->plan->getList();
-// $plan = $epayco->plan->remove("coursereact");
+    /**
+     * Create clien and token credit card
+     * @return object
+     */
+    protected function createClient()
+    {
+        
+        $token = $this->createToken();
+        $client = $this->epayco->customer->create(array(
+            "token_card" => $token,
+            "name" => "Joe Doe",
+            "email" => "joe" . rand() . "@payco.co",
+            "phone" => "3005234321",
+            "default" => true
+        ));
 
-// var_dump($plan);
+        $array = array(
+            "token" => $token,
+            "clientId" => $client->data->customerId
+        );
 
-// $subscription_info = array(
-//   "id_plan" => "coursereact",
-//   "customer" => "3gFCbw6bfj2EZF7Av",
-//   "token_card" => "oadJSK4PzCykvG9Zr",
-//   "doc_type" => "CC",
-//   "doc_number" => "5234567"
-// );
+        return (Object) $array;
+    }
 
-// $sub = $epayco->subscriptions->create($subscription_info);
-// $sub = $epayco->subscriptions->get("3RHChi5dv8axFBJ9W");
-// $sub = $epayco->subscriptions->getList();
-// $sub = $epayco->subscriptions->cancel("3RHChi5dv8axFBJ9W");
-// $sub = $epayco->subscriptions->charge($subscription_info);
-//
-// var_dump($sub);
+    /* Customers */
+    public function testCreateClient()
+    {
+        $token = $this->token;
 
-// $pse = $epayco->bank->pse(array(
-//         "bank" => "1007",
-//         "invoice" => "1472050778",
-//         "description" => "Pago pruebas",
-//         "value" => "10000",
-//         "tax" => "0",
-//         "tax_base" => "0",
-//         "currency" => "COP",
-//         "type_person" => "0",
-//         "doc_type" => "CC",
-//         "doc_number" => "10358519",
-//         "name" => "PRUEBAS",
-//         "last_name" => "PAYCO",
-//         "email" => "no-responder@payco.co",
-//         "country" => "CO",
-//         "cell_phone" => "3010000001",
-//         "ip" => "186.116.10.133",
-//         "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-//         "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-//         "method_confirmation" => "GET",
-// ));
+        $client = $this->epayco->customer->create(array(
+            "token_card" => $token,
+            "name" => "Joe Doe",
+            "email" => "joe@payco.co",
+            "phone" => "3005234321",
+            "default" => true
+        ));
+        echo strlen($client->data->customerId);
+        //$this->assertTrue(strlen($client->data->customerId) > 0);
+    }
 
-// $pse = $epayco->bank->pseTransaction("249005850");
-//
-// var_dump($pse);
+    public function testGetClient()
+    {
+        $customers = $this->epayco->customer->getList();
+        $customerId = $customers->customers[0]->id_customer;
+        $response = $this->epayco->customer->get($customerId);
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
 
+    public function testGetClients()
+    {
+        $response = $this->epayco->customer->getList();
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
 
-// $cash = $epayco->cash->create("efecty", array(
-//     "invoice" => "1472050778",
-//     "description" => "pay test",
-//     "value" => "20000",
-//     "tax" => "0",
-//     "tax_base" => "0",
-//     "currency" => "COP",
-//     "type_person" => "0",
-//     "doc_type" => "CC",
-//     "doc_number" => "10358519",
-//     "name" => "testing",
-//     "last_name" => "PAYCO",
-//     "email" => "test@mailinator.com",
-//     "cell_phone" => "3010000001",
-//     "end_date" => "2017-12-05",
-//     "ip" => "186.116.10.133",
-//     "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-//     "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-//     "method_confirmation" => "GET",
-// ));
+    /* Plans */
+    public function testCreatePlan()
+    {
+        $plan = $this->epayco->plan->create(array(
+            "id_plan" => "coursereact",
+            "name" => "Course react js",
+            "description" => "Course react and redux",
+            "amount" => 30000,
+            "currency" => "cop",
+            "interval" => "month",
+            "interval_count" => 1,
+            "trial_days" => 30
+        ));
+        $this->assertTrue(strlen($plan->data->id) > 0);
+    }
 
-// $cash = $epayco->cash->transaction("249005850");
+    public function testGetPlan()
+    {
+        $response = $this->epayco->plan->getList();
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
 
-// $pay = $epayco->charge->create(array(
-//     "token_card" => "oadJSK4PzCykvG9Zr",
-//     "customer_id" => "3gFCbw6bfj2EZF7Av",
-//     "doc_type" => "CC",
-//     "doc_number" => "1035851980",
-//     "name" => "John",
-//     "last_name" => "Doe",
-//     "email" => "example@email.com",
-//     "ip" => "192.198.2.114",
-//     "bill" => "OR-1234",
-//     "description" => "Test Payment",
-//     "value" => "116000",
-//     "tax" => "16000",
-//     "tax_base" => "100000",
-//     "currency" => "COP",
-//     "dues" => "12"
-// ));
+    public function testEditPlan()
+    {
+        $response = $this->epayco->plan->update("coursereact", array("interval_count" => 4));
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
 
-// $pay = $epayco->charge->transaction("249005850");
-//
-// var_dump($pay);
+    /* Subscriptions */
+    public function testCreateSubscription()
+    {
+        $data = $this->createClient();
+        $sub = $this->epayco->subscriptions->create(array(
+            "id_plan" => "coursereact",
+            "customer" => $data->clientId,
+            "token_card" => $data->token
+        ));
+        $this->assertTrue(strlen($sub->data->suscription) > 0);
+    }
+
+    public function testGetSuscription()
+    {
+        $subs = $this->epayco->subscriptions->getList();
+        $subId = $subs->plans[0]->_id;
+        $request = $this->epayco->subscriptions->get($subId);
+        $this->assertTrue(strlen($request) > 0);
+    }
+
+    public function testListSubscriptions()
+    {
+        $subs = $this->epayco->subscriptions->getList();
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
+
+    public function testCancelSubscription()
+    {
+        $response = $this->epayco->subscriptions->cancel(array(
+            "id" => "TxmRjbKWFbsNaNtRW"
+        ));
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
+
+    public function testPseCreate()
+    {
+        $response = $this->epayco->bank->pse(array(
+            "bank" => "1007",
+            "invoice" => "1472050778",
+            "description" => "Pago pruebas",
+            "value" => "10000",
+            "tax" => "0",
+            "tax_base" => "0",
+            "currency" => "COP",
+            "type_person" => "0",
+            "doc_type" => "CC",
+            "doc_number" => "10358519",
+            "name" => "PRUEBAS",
+            "last_name" => "PAYCO",
+            "email" => "no-responder@payco.co",
+            "country" => "CO",
+            "cell_phone" => "3010000001",
+            "ip" => "186.116.10.133",
+            "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+            "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+            "method_confirmation" => "GET",
+        ));
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
+}
