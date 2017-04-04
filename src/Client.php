@@ -12,7 +12,7 @@ use Epayco\Exceptions\ErrorException;
  */
 class Client
 {
-    const BASE_URL = "http://ec2-54-167-68-102.compute-1.amazonaws.com";
+    const BASE_URL = "https://api.secure.payco.co";
     const BASE_URL_SECURE = "https://secure.payco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
