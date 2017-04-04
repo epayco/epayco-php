@@ -53,7 +53,7 @@ class Cash extends Resource
     {
         return $this->request(
                 "GET",
-                "/restpagos/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
+                "/restpagos/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
                 $api_key = $this->epayco->api_key,
                 $uid,
                 $private_key = $this->epayco->private_key,
