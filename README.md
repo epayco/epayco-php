@@ -62,7 +62,7 @@ $token = $epayco->token->create(array(
 #### Create
 
 ```php
-$customer = $this->epayco->customer->create(array(
+$customer = $epayco->customer->create(array(
     "token_card" => $token,
     "name" => "Joe Doe",
     "email" => "joe@payco.co",
@@ -174,7 +174,7 @@ $sub = $epayco->subscriptions->charge(array(
 
 ```php
 $pse = $epayco->bank->pse(array(
-        "bank" => "1007",
+        "bank" => "1022",
         "invoice" => "1472050778",
         "description" => "Pago pruebas",
         "value" => "10000",
@@ -189,7 +189,6 @@ $pse = $epayco->bank->pse(array(
         "email" => "no-responder@payco.co",
         "country" => "CO",
         "cell_phone" => "3010000001",
-        "ip" => "186.116.10.133",
         "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "method_confirmation" => "GET",
@@ -221,8 +220,7 @@ $cash = $epayco->cash->create("efecty", array(
     "last_name" => "PAYCO",
     "email" => "test@mailinator.com",
     "cell_phone" => "3010000001",
-    "end_date" => "2017-12-05",
-    "ip" => "186.116.10.133",
+    "end_date" => "data_max_5_days",
     "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "method_confirmation" => "GET",
@@ -248,7 +246,6 @@ $pay = $epayco->charge->create(array(
     "name" => "John",
     "last_name" => "Doe",
     "email" => "example@email.com",
-    "ip" => "192.198.2.114",
     "bill" => "OR-1234",
     "description" => "Test Payment",
     "value" => "116000",
