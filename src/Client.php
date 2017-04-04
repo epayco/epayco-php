@@ -62,13 +62,23 @@ class Client
             );
             if ($method == "GET") {
                 if ($switch) {
+                    if($test){
+                        $test="TRUE";
+                    }else{
+                        $test="FALSE";
+                    }
+
                     $response = \Requests::get(Client::BASE_URL_SECURE . $url, $headers, $options);
                 } else {
                     $response = \Requests::get(Client::BASE_URL . $url, $headers, $options);
                 }
             } elseif ($method == "POST") {
                 if ($switch) {
-                    var_dump('secure');
+                   if($test){
+                        $test="TRUE";
+                    }else{
+                        $test="FALSE";
+                    }
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key);
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                 } else {

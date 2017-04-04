@@ -35,7 +35,7 @@ class Util
             $adddata = array(
                 "public_key" => $api_key,
                 "i" => base64_encode(Client::IV),
-                "enpruebas" => $test,
+                "enpruebas" => $aes->encrypt($test),
                 "lenguaje" => Client::LENGUAGE,
                 "p" => "",
             );
