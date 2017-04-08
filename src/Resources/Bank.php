@@ -32,7 +32,7 @@ class Bank extends Resource
      * @param  Object $options data transaction
      * @return object
      */
-    public function pse($options = null)
+    public function create($options = null)
     {
         return $this->request(
                "POST",
@@ -51,7 +51,7 @@ class Bank extends Resource
      * @param  String $uid id transaction
      * @return object
      */
-    public function pseTransaction($uid = null)
+    public function get($uid = null)
     {
         return $this->request(
                 "GET",
