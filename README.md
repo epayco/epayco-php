@@ -173,7 +173,7 @@ $sub = $epayco->subscriptions->charge(array(
 #### Create
 
 ```php
-$pse = $epayco->bank->pse(array(
+$pse = $epayco->bank->create(array(
         "bank" => "1022",
         "invoice" => "1472050778",
         "description" => "Pago pruebas",
@@ -198,7 +198,7 @@ $pse = $epayco->bank->pse(array(
 #### Retrieve
 
 ```php
-$pse = $epayco->bank->pseTransaction("id_transaction");
+$pse = $epayco->bank->get("transactionID");
 ```
 
 ### Cash
