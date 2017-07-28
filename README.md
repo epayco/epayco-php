@@ -63,7 +63,7 @@ $token = $epayco->token->create(array(
 
 ```php
 $customer = $epayco->customer->create(array(
-    "token_card" => $token,
+    "token_card" => $token->id,
     "name" => "Joe Doe",
     "email" => "joe@payco.co",
     "phone" => "3005234321",
@@ -239,8 +239,8 @@ $cash = $epayco->cash->transaction("id_transaction");
 
 ```php
 $pay = $epayco->charge->create(array(
-    "token_card" => "id_token",
-    "customer_id" => "id_client",
+    "token_card" => $token->id,
+    "customer_id" => $customer->data->customerId,
     "doc_type" => "CC",
     "doc_number" => "1035851980",
     "name" => "John",
