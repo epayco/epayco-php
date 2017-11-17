@@ -58,8 +58,11 @@ class Client
 
         try {
             $options = array(
-                'auth' => new \Requests_Auth_Basic(array($api_key, ''))
+                'auth' => new \Requests_Auth_Basic(array($api_key, '')),
+                'timeout' => 120,
+                'connect_timeout' => 120,
             );
+            
             if ($method == "GET") {
                 if ($switch) {
                     if($test){
