@@ -1,6 +1,6 @@
 <?php
 
-include ('./vendor/autoload.php');
+include __DIR__ . '/../vendor/autoload.php';
 
 use Epayco\Epayco;
 use Epayco\Client;
@@ -20,6 +20,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
                     "card[exp_month]" => "07",
                     "card[cvc]" => "123");
     protected $token;
+
     /**
      * Init sdk epayco
      */
@@ -36,7 +37,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
 
     /**
      * Create token credit card form tokenization
-     * @return object
+     * @return string
      */
     protected function createToken()
     {
@@ -52,6 +53,8 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
             $lang = $this->lenguage
         );
         $this->token = $response->id;
+
+        return $this->token;
     }
 
     /**
@@ -81,7 +84,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
     /* Customers */
     public function testCreateClient()
     {
-        $token = $this->token;
+        $token = $this->createToken();
 
         $client = $this->epayco->customer->create(array(
             "token_card" => $token,
@@ -90,14 +93,14 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
             "phone" => "3005234321",
             "default" => true
         ));
-        echo strlen($client->data->customerId);
-        //$this->assertTrue(strlen($client->data->customerId) > 0);
+
+        $this->assertTrue(strlen($client->data->customerId) > 0);
     }
 
     public function testGetClient()
     {
-        $customers = $this->epayco->customer->getList();
-        $customerId = $customers->customers[0]->id_customer;
+        $customers = $this->epayco->customer->getList()->data;
+        $customerId = $customers[0]->id_customer;
         $response = $this->epayco->customer->get($customerId);
         $this->assertGreaterThanOrEqual(1, count($response));
     }
@@ -112,7 +115,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
     public function testCreatePlan()
     {
         $plan = $this->epayco->plan->create(array(
-            "id_plan" => "coursereact",
+            "id_plan" => $this->randomString(20),
             "name" => "Course react js",
             "description" => "Course react and redux",
             "amount" => 30000,
@@ -121,7 +124,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
             "interval_count" => 1,
             "trial_days" => 30
         ));
-        $this->assertTrue(strlen($plan->data->id) > 0);
+        $this->assertTrue(strlen($plan->data->id_plan) > 0);
     }
 
     public function testGetPlan()
@@ -141,8 +144,10 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
     {
         $data = $this->createClient();
         $sub = $this->epayco->subscriptions->create(array(
-            "id_plan" => "coursereact",
+            "id_plan" => $this->randomString(20),
             "customer" => $data->clientId,
+            "doc_type" => 'CC',
+            "doc_number" => rand() . '',
             "token_card" => $data->token
         ));
         $this->assertTrue(strlen($sub->data->suscription) > 0);
@@ -159,7 +164,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
     public function testListSubscriptions()
     {
         $subs = $this->epayco->subscriptions->getList();
-        $this->assertGreaterThanOrEqual(1, count($response));
+        $this->assertGreaterThanOrEqual(1, count($subs));
     }
 
     public function testCancelSubscription()
@@ -172,7 +177,7 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
 
     public function testPseCreate()
     {
-        $response = $this->epayco->bank->pse(array(
+        $response = $this->epayco->bank->create(array(
             "bank" => "1007",
             "invoice" => "1472050778",
             "description" => "Pago pruebas",
@@ -194,5 +199,31 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
             "method_confirmation" => "GET",
         ));
         $this->assertGreaterThanOrEqual(1, count($response));
+    }
+
+
+
+    public function testPsebanks()
+    {
+        $response = $this->epayco->bank->pseBank();
+        $this->assertTrue($response->success);
+        $this->assertObjectHasAttribute('data', $response);
+        $this->assertNotEmpty($response->data);
+        $this->assertObjectHasAttribute('bankName', $response->data[0]);
+    }
+
+    /**
+     * @param int $length
+     * @return string
+     */
+    protected function randomString($length = 10)
+    {
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $randomString = '';
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[rand(0, $charactersLength - 1)];
+        }
+        return $randomString;
     }
 }
