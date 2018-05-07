@@ -17,7 +17,7 @@ class Bank extends Resource
     {
         return $this->request(
                "GET",
-               "/restpagos/pse/bancos.json",
+               "/restpagos/pse/bancos.json?public_key=" . $this->epayco->api_key,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
