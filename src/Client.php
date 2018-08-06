@@ -93,7 +93,7 @@ class Client
                 $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
             }
         } catch (\Exception $e) {
-            throw new ErrorException($lang, 101);
+            throw new ErrorException($e->getMessage(), 101);
         }
         if ($response->status_code >= 200 && $response->status_code <= 206) {
             if ($method == "DELETE") {
