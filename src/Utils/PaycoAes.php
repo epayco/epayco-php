@@ -8,16 +8,12 @@ use Epayco\Utils\OpensslEncrypt;
 /**
  * Epayco library encrypt based in AES
  */
-try {
-    
-    $_cipher = MCRYPT_RIJNDAEL_128;
-    $_mode = MCRYPT_MODE_CBC;
+if (function_exists('mcrypt_get_iv_size')) {
 
-    class PaycoAes extends McryptEncrypt {}
-} catch (\Exception $e) {
-    
-    class PaycoAes extends OpensslEncrypt {}
+	class PaycoAes extends McryptEncrypt {}
+}else{
+	
+	class PaycoAes extends OpensslEncrypt {}
 }
-
 
 ?>
