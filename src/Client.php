@@ -77,11 +77,6 @@ class Client
                 }
             } elseif ($method == "POST") {
                 if ($switch) {
-                   if($test){
-                        $test="TRUE";
-                    }else{
-                        $test="FALSE";
-                    }
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key);
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                 } else {
