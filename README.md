@@ -201,6 +201,24 @@ $pse = $epayco->bank->create(array(
 $pse = $epayco->bank->get("transactionID");
 ```
 
+#### Split Payments
+
+Previous requirements:
+https://docs.epayco.co/tools/split-payment
+
+```php
+$split_cash_pay = $epayco->cash->create("efecty", array(
+    //Other customary parameters...
+    "splitpayment" => true,
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee" => "10",
+    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01')))
+));
+```
+
 ### Cash
 
 #### Create
@@ -233,6 +251,24 @@ $cash = $epayco->cash->create("efecty", array(
 $cash = $epayco->cash->transaction("id_transaction");
 ```
 
+#### Split Payments
+
+Previous requirements:
+https://docs.epayco.co/tools/split-payment
+
+```php
+$split_cash_pay = $epayco->cash->create("efecty", array(
+    //Other customary parameters...
+    "splitpayment" => true,
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee" => "10",
+    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01')))
+));
+```
+
 ### Payment
 
 #### Create
@@ -252,7 +288,12 @@ $pay = $epayco->charge->create(array(
     "tax" => "16000",
     "tax_base" => "100000",
     "currency" => "COP",
-    "dues" => "12"
+    "dues" => "12",
+    "address" => "cr 44 55 66",
+    "phone"=> "2550102",
+    "cell_phone"=> "3010000001",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "url_confirmation" => "https://tudominio.com/confirmacion.php",
 ));
 ```
 
@@ -260,4 +301,22 @@ $pay = $epayco->charge->create(array(
 
 ```php
 $pay = $epayco->charge->transaction("id_transaction");
+```
+
+#### Split Payments
+
+Previous requirements:
+https://docs.epayco.co/tools/split-payment
+
+```php
+$split_pay = $epayco->charge->create(array(
+    //Other customary parameters...
+    "splitpayment" => true,
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee"=>"10",
+    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
+));
 ```
