@@ -164,7 +164,10 @@ $sub = $epayco->subscriptions->charge(array(
   "customer" => "id_client",
   "token_card" => "id_token",
   "doc_type" => "CC",
-  "doc_number" => "5234567"
+  "doc_number" => "5234567",
+  "address" => "cr 44 55 66",
+  "phone"=> "2550102",
+  "cell_phone"=> "3010000001",
 ));
 ```
 
