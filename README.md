@@ -207,9 +207,9 @@ Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
 ```php
-$split_cash_pay = $epayco->cash->create("efecty", array(
+$split_bank_pay = $epayco->bank->create(array(
     //Other customary parameters...
-    "splitpayment" => true,
+    "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
@@ -259,7 +259,7 @@ https://docs.epayco.co/tools/split-payment
 ```php
 $split_cash_pay = $epayco->cash->create("efecty", array(
     //Other customary parameters...
-    "splitpayment" => true,
+    "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
@@ -311,7 +311,7 @@ https://docs.epayco.co/tools/split-payment
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
-    "splitpayment" => true,
+    "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
