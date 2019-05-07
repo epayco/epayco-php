@@ -26,7 +26,7 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang
         );
-    }
+    } 
 
     /**
      * Get client for id
@@ -82,4 +82,13 @@ class Customers extends Resource
                $lang = $this->epayco->lang
         );
     }
+
+      //Start - Graphql Operations
+
+      public function query($obj){
+
+        return $this->graphqlRequest($obj,$this->epayco->api_key);
+      }
+
+      //End - Graphql Operations
 }

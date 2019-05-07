@@ -10,9 +10,13 @@ use Epayco\Exceptions\ErrorException;
 /**
  * Client conection api epayco
  */
-class Client
+class Client extends GraphqlClient
 {
-    const BASE_URL = "https://api.secure.payco.co";
+
+    const BASE_URL = "http://localhost:3000"; //LOCAL
+    //const BASE_URL = "https://api.secure.epayco.io"; DEV
+    //const BASE_URL = "https://api.secure.payco.co"; PROD
+
     const BASE_URL_SECURE = "https://secure.payco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
@@ -121,5 +125,11 @@ class Client
             throw new ErrorException($lang, 107);
         }
         throw new ErrorException($lang, 102);
+    }
+
+    public function graphqlRequest($obj,$api_key)
+    {
+        $query = parent::queryStringCreator($obj);
+        return parent::sendRequest($query,[],$api_key);
     }
 }
