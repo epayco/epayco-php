@@ -127,9 +127,11 @@ class Client extends GraphqlClient
         throw new ErrorException($lang, 102);
     }
 
-    public function graphqlRequest($obj,$api_key)
+    public function graphql($query,$api_key)
     {
-        $query = parent::queryStringCreator($obj);
-        return parent::sendRequest($query,[],$api_key);
+        //Validacion de query
+        $queryValidated = $this->validate($query);
+        return $queryValidated;
+        //return $this->sendRequest($query,[],$api_key);
     }
 }

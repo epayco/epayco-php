@@ -85,9 +85,9 @@ class Customers extends Resource
 
       //Start - Graphql Operations
 
-      public function query($obj){
+      public function query($query){
 
-        return $this->graphqlRequest($obj,$this->epayco->api_key);
+        return $this->graphql($query,$this->epayco->api_key);
       }
 
       //End - Graphql Operations
