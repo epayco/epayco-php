@@ -32,8 +32,9 @@ class GraphqlClient
      if (  $selector === null && $selectorOr === null) {
       throw new ErrorException("Parameter required, selector is empty or invalid please fill and try again.",103);
      }else{
-      if ($selector !== null && count($selector) > 0){
-          throw new ErrorException("Parameter required, please specify action: find or findOne and try again.",103);
+
+      if ($selector !== null && isset( $selector[0])){
+          throw new ErrorException("Parameter required, selector is empty or invalid please fill and try again.",103);
       }
      }
 
@@ -141,6 +142,149 @@ class GraphqlClient
             return $th->getMessage();
         }
         return json_decode($response->body,true);
+    }
+
+    /**
+     * @description Verificar si el esquema consultado va a listar un conjunto de registros
+     * @param String action tipo de busqueda, Find o FindOne
+     * @param Object pagination informacion de paginacion solicitada
+     * @param String schema nombre de esquema a consultar
+     */
+    public function canPaginateSchema($action,$pagination,$schema){
+        if ($pagination !== null) {
+            if ($action === "findOne" && $pagination["limit"] !== null) {
+                throw  new ErrorException("Can't paginate this schema ${schema}, because this query has only one rows to show, please add a valid query and try again.",108);
+            }
+        }
+    }
+
+    public function paramsBuilder($query){
+
+        $selector = $query->selector;
+        $selectorOr = $query->selectorOr;
+        $options = [];
+
+        if ($selector !== null){
+            foreach ($selector as $key => $item) {
+                $options["selector"] = [
+                  "type" => $key,
+                  "value" => $item
+                ];
+            }
+            $optionsToJson = json_encode((object)$options);
+        }else if ($selectorOr !== null){
+            foreach ($selectorOr as $key => $SelectorItem) {
+                foreach ($SelectorItem as $key => $item) {
+                    $options["selectorOr"] = [
+                        "type" => $key,
+                        "value" => $item
+                    ];
+                }
+            }
+        }
+        return $options;
+    }
+
+    public function queryString(
+        $selectorParams,
+        $schema,
+        $wildCard,
+        $byDates,
+        $customFields,
+        $paginationInfo)
+    {
+        $wildCardOption = ($wildCard === null) ? "default": $wildCard;
+        $byDatesOptions = ($byDates === null) ? (object)[]: (object)$byDates;
+        $fields = ($customFields === null) ? $this->fields($schema): $customFields;
+        $selectorName = key($selectorParams[0]); //Get selector name
+
+    }
+
+    public function fields($type){
+        switch ($type){
+            case "subscriptions":
+                return `_id
+        periodStart
+        periodEnd
+        status
+        customer {
+          _id
+          name
+          email
+          phone
+          doc_type
+          doc_number
+          cards {
+            data {
+              token
+              lastNumbers
+              franquicie
+            }
+          }
+        }
+        plan {
+          name
+          description
+          amount
+          currency
+          interval
+          interval_count
+          status
+          trialDays
+        }`;
+            case "customer":
+                return `name
+              _id
+              email
+              cards {
+                token
+                data {
+                  franquicie
+                  lastNumbers
+                }
+              }
+              subscriptions {
+                _id
+                periodStart
+                periodEnd
+                status
+                plan {
+                  _id
+                  idClient
+                  amount
+                  currency
+                }
+        }`;
+            case "customers":
+                return `name
+              _id
+              email
+              cards {
+                token
+                data {
+                  franquicie
+                  lastNumbers
+                }
+              }
+              subscriptions {
+                _id
+                periodStart
+                periodEnd
+                status
+                plan {
+                  _id
+                  idClient
+                  amount
+                  currency
+                }
+        }`;
+        }
+
+    }
+
+    public function queryTemplates(){
+        //Convert selectorParams with json_encode
+        //$optionsToJson = json_encode((object)$options);
     }
 
     public function validateDateFormat($date){

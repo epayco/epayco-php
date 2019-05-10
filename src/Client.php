@@ -127,11 +127,23 @@ class Client extends GraphqlClient
         throw new ErrorException($lang, 102);
     }
 
-    public function graphql($query,$api_key)
+    public function graphql($query,$schema,$api_key)
     {
-        //Validacion de query
-        $queryValidated = $this->validate($query);
-        return $queryValidated;
+        $this->validate($query); //query validator
+        $schema = $query->action === "find" ? $schema."s": $schema;
+        $this->canPaginateSchema($query->action,$query->pagination,$schema);
+        $selectorParams = $this->paramsBuilder($query);
+
+
+        $queryString = $this->queryString(
+            $selectorParams,
+            $schema,
+            $query->wildCard,
+            $query->byDates,
+            $query->customFields,
+            $query->pagination); //rows returned
+
+            return $schemaData;
         //return $this->sendRequest($query,[],$api_key);
     }
 }
