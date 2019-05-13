@@ -87,42 +87,8 @@ class GraphqlClient
         }
     }
 
-      /* $query = '
-      query getPaginatedCustomers {
-          paginatedCustomers(
-            input: {
-              wildCard: "startsWith"
-              byDate: { start: "2019-03-01", end: "2019-04-30" }
-              selectorOr: [
-              
-              ]
-            }
-            limit: 5
-            pageNumber: '.$page.'
-            #cursor: "MjAxOS0wNC0yNVQxNDoyOTo1Mi45MDJa"
-          ) {
-            totalRows
-           totalRowsByPage
-            customers{
-              name
-              createdAt
-            }
-            pageInfo {    	
-              hasNextPage
-              actualPage
-              nextPages{
-                page
-              }
-             previousPages{
-                page
-              }
-            }
-          }
-        }'; */
-
-      //return $query;
     }
-    public function sendRequest(string $query, array $variables = [], $api_key)
+    public function sendRequest(string $query, $api_key)
     {
         $headers = [
             "Content-Type: application/json",
@@ -144,12 +110,6 @@ class GraphqlClient
         return json_decode($response->body,true);
     }
 
-    /**
-     * @description Verificar si el esquema consultado va a listar un conjunto de registros
-     * @param String action tipo de busqueda, Find o FindOne
-     * @param Object pagination informacion de paginacion solicitada
-     * @param String schema nombre de esquema a consultar
-     */
     public function canPaginateSchema($action,$pagination,$schema){
         if ($pagination !== null) {
             if ($action === "findOne" && $pagination["limit"] !== null) {
@@ -175,13 +135,14 @@ class GraphqlClient
         }else if ($selectorOr !== null){
             foreach ($selectorOr as $key => $SelectorItem) {
                 foreach ($SelectorItem as $key => $item) {
-                    $options["selectorOr"] = [
+                    $options["selectorOr"][] = [
                         "type" => $key,
                         "value" => $item
                     ];
                 }
             }
         }
+
         return $options;
     }
 
@@ -194,9 +155,22 @@ class GraphqlClient
         $paginationInfo)
     {
         $wildCardOption = ($wildCard === null) ? "default": $wildCard;
-        $byDatesOptions = ($byDates === null) ? (object)[]: (object)$byDates;
+        $byDatesOptions = ($byDates === null) ? []: $byDates;
         $fields = ($customFields === null) ? $this->fields($schema): $customFields;
-        $selectorName = key($selectorParams[0]); //Get selector name
+        $selectorName = ( empty($selectorParams["selectorOr"]) ) ? "selector":"selectorOr";
+        $isPagination = ($paginationInfo === null) ? false:true;
+
+        (object)$queryArgs = [
+            "query" => $selectorParams,
+            "schema" => $schema,
+            "wildCardOption" => $wildCardOption,
+            "byDatesOption" => $byDatesOptions,
+            "fields" => $fields,
+            "selectorName" => $selectorName,
+            "paginationInfo" => $paginationInfo
+        ];
+
+        return $this->queryTemplates($isPagination,$queryArgs);
 
     }
 
@@ -282,9 +256,73 @@ class GraphqlClient
 
     }
 
-    public function queryTemplates(){
-        //Convert selectorParams with json_encode
-        //$optionsToJson = json_encode((object)$options);
+    public function queryTemplates($isPagination, $args){
+
+        $resolverQueryName = "paginated".ucfirst($args["schema"]);
+        $selectorName = $args["selectorName"];
+        $selectorQuery =  (count($args["query"])>0)?
+            preg_replace('/"([^"]+)"\s*:\s*/', '$1:', json_encode($args["query"][$selectorName])): json_encode([]) ;
+        $finalQuery = "";
+
+        switch ($isPagination){
+            case true:
+                $finalQuery = '
+                query getPaginatedRows{
+                    '.$resolverQueryName.' (
+                        input:{
+                            wildCard: "'.$args["wildCardOption"].'"
+                            byDate: 
+                            { 
+                                start: "'.$args["byDatesOption"]["start"].'", 
+                                end: "'.$args["byDatesOption"]["end"].'" 
+                            }
+                            '.$selectorName.': '. $selectorQuery  .'                            
+                        }
+                        limit:'.$args["paginationInfo"]["limit"].'
+                        pageNumber:'.$args["paginationInfo"]["pageNumber"].'   
+                    ){
+                        totalRows
+                        totalRowsByPage
+                        '.$args["schema"].'{
+                            '.$args["fields"].'
+                        }
+                        pageInfo {    	
+                            hasNextPage
+                            actualPage
+                            nextPages{
+                              page
+                            }
+                           previousPages{
+                              page
+                           }
+                        }
+                    }
+                }
+                ';
+                break;
+
+            case false:
+                $finalQuery = ' 
+                query '.$args["schema"].' {
+                    '.$args["schema"].' (
+                      input :{
+                        wildCard: "'.$args["wildCardOption"].'"
+                        byDate: 
+                            { 
+                                start: "'.$args["byDatesOption"]["start"].'", 
+                                end: "'.$args["byDatesOption"]["end"].'" 
+                            }
+                        '.$selectorName.': '. $selectorQuery  .'
+                      }       
+                    ) {
+                      '.$args["fields"].'
+                    }
+                  }
+                ';
+                break;
+        }
+        $trimQuery = trim( $finalQuery);
+        return $trimQuery;
     }
 
     public function validateDateFormat($date){
@@ -293,6 +331,50 @@ class GraphqlClient
         } else {
             return false;
         }
+    }
+
+    public function successResponse($data,$schema){
+
+        $response = [];
+        $isPaginatedResponse = "paginated".ucfirst($schema);
+
+        if( !empty($data["data"][$isPaginatedResponse])){
+            $response["success"] = true;
+            $response["status"] = true;
+            $response["totalRows"]= $data["data"][$isPaginatedResponse]["totalRows"];
+            $response["totalRowsByPage"]=  $data["data"][$isPaginatedResponse]["totalRowsByPage"];
+            $response["data"] = $data["data"][$isPaginatedResponse][$schema];
+            $response["date"]  = date("Y-m-d H:i:sP");
+            $response["type"] = 'Find '.$schema;
+            $response["object"] = $schema;
+            $response["pageInfo"] = [
+                "hasNextPage" => $data["data"][$isPaginatedResponse]["pageInfo"]["hasNextPage"],
+                "actualPage" => $data["data"][$isPaginatedResponse]["pageInfo"]["actualPage"],
+                "nextPages" => $data["data"][$isPaginatedResponse]["pageInfo"]["nextPages"],
+                "previousPages" =>  $data["data"][$isPaginatedResponse]["pageInfo"]["previousPages"]
+              ];
+        }else{
+            if ( count($data["data"][$schema]) === 100) { //Objecto de respuesta para cuando la cantidad de registros solicitado supera los 100
+                $response["success"] = true;
+                $response["status"] = true;
+                $response["requirePagination"] = true;
+                $response["requirePaginationMessage"] = 'The quantity of rows in result exceeded the max allowed (100), please configure pagination schema and try again ';
+                $response["data"] = $data["data"][$schema];
+                $response["date"]  = date("Y-m-d H:i:sP");
+                $response["type"] = 'Find '.$schema;
+                $response["object"] = $schema;
+            }else{
+                $response["success"] = true;
+                $response["status"] = true;
+                $response["requirePagination"] = false;
+                $response["data"] = $data["data"][$schema];
+                $response["date"]  = date("Y-m-d H:i:sP");
+                $response["type"] = 'Find '.$schema;
+                $response["object"] = $schema;
+            }
+        }
+
+        return $response;
     }
 
     

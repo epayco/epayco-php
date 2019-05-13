@@ -129,21 +129,25 @@ class Client extends GraphqlClient
 
     public function graphql($query,$schema,$api_key)
     {
-        $this->validate($query); //query validator
-        $schema = $query->action === "find" ? $schema."s": $schema;
-        $this->canPaginateSchema($query->action,$query->pagination,$schema);
-        $selectorParams = $this->paramsBuilder($query);
+        try{
+            $this->validate($query); //query validator
+            $schema = $query->action === "find" ? $schema."s": $schema;
+            $this->canPaginateSchema($query->action,$query->pagination,$schema);
+            $selectorParams = $this->paramsBuilder($query);
 
+            $queryString = $this->queryString(
+                $selectorParams,
+                $schema,
+                $query->wildCard,
+                $query->byDates,
+                $query->customFields,
+                $query->pagination); //rows returned
 
-        $queryString = $this->queryString(
-            $selectorParams,
-            $schema,
-            $query->wildCard,
-            $query->byDates,
-            $query->customFields,
-            $query->pagination); //rows returned
+            $result = $this->sendRequest($queryString,$api_key);
+            return $this->successResponse($result,$schema);
+        }catch (\Exception $e){
+            throw new ErrorException($e->getMessage(), 301);
+        }
 
-            return $schemaData;
-        //return $this->sendRequest($query,[],$api_key);
     }
 }

@@ -104,4 +104,9 @@ class Plan extends Resource
               $lang = $this->epayco->lang
        );
    }
+
+    public function query($query){
+
+        return $this->graphql($query,'plan',$this->epayco->api_key);
+    }
 }
