@@ -264,13 +264,13 @@ class GraphqlClient
         $selectorQuery =  (count($args["query"])>0)?
             preg_replace('/"([^"]+)"\s*:\s*/', '$1:', json_encode($args["query"][$selectorName])): json_encode([]) ;
         $finalQuery = "";
-        $byDatesOptions = 'byDate: {}';
-        if( count($args["byDatesOption"]) > 0){
-            $byDatesOptions = 'byDate: 
-                            { 
-                                start: "'.$args["byDatesOption"]["start"].'", 
-                                end: "'.$args["byDatesOption"]["end"].'" 
-                            }';
+        $byDateInfo = "";
+        if(isset($args["byDatesOption"]["start"])){
+            $byDateInfo = 'byDate:
+            {
+                start: "'.$args["byDatesOption"]["start"].'", 
+                end: "'.$args["byDatesOption"]["end"].'" 
+            }';
         }
 
         switch ($isPagination){
@@ -279,8 +279,8 @@ class GraphqlClient
                 query getPaginatedRows{
                     '.$resolverQueryName.' (
                         input:{
-                            wildCard: "'.$args["wildCardOption"].'"
-                            '.$byDatesOptions.'
+                            wildCard: "'.$args["wildCardOption"].'""
+                            '.$byDateInfo.'                            
                             '.$selectorName.': '. $selectorQuery  .'                            
                         }
                         limit:'.$args["paginationInfo"]["limit"].'
