@@ -105,8 +105,8 @@ class Subscriptions extends Resource
                $lang = $this->epayco->lang
         );
     }
-    public function query($query){
+    public function query($query,$type,$custom_key = null){
 
-        return $this->graphql($query,'subscription',$this->epayco->api_key);
+        return $this->graphql($query,'subscription',$this->epayco->api_key,$type,$custom_key);
     }
 }

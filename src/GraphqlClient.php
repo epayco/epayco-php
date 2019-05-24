@@ -13,18 +13,17 @@ use Epayco\Exceptions\ErrorException;
 class GraphqlClient
 {
     public function validate($query){
-
      //Inicializar parametros requeridos para wrapper
      $action = $query->action;
-     $selector = $query->selector;
-     $selectorOr = $query->selectorOr;
+     $selector = isset($query->selector)? $query->selector: null ;
+     $selectorOr = isset($query->selectorOr)? $query->selectorOr: null;
      $wildCard = $query->wildCard;
-     $byDates = $query->byDates;
-     $pagination = $query->pagination;
-     $customFields = $query->customFields;
+     $byDates =  isset($query->byDates)?$query->byDates: null ;
+     $pagination = isset($query->pagination)? $query->pagination: null ;
+     $customFields = isset($query->customFields)? $query->customFields: null ;
 
      //Comprobacion: El query tiene un action: find o findOne?
-     if (!($query->action === "find" || $query->action === "findOne")) {
+     if (!($action === "find" || $query->action === "findOne")) {
          throw new ErrorException("Parameter required, please specify action: find or findOne and try again.",102);
      }
 
@@ -120,8 +119,8 @@ class GraphqlClient
 
     public function paramsBuilder($query){
 
-        $selector = $query->selector;
-        $selectorOr = $query->selectorOr;
+        $selector = isset($query->selector)? $query->selector: null;
+        $selectorOr = isset($query->selectorOr)? $query->selectorOr: null;
         $options = [];
 
         if ($selector !== null){
@@ -149,11 +148,13 @@ class GraphqlClient
     public function queryString(
         $selectorParams,
         $schema,
-        $wildCard,
-        $byDates,
-        $customFields,
-        $paginationInfo)
+        $query)
     {
+        $wildCard = $query->wildCard;
+        $byDates =  isset($query->byDates)?$query->byDates: null ;
+        $customFields = isset($query->customFields)? $query->customFields: null ;
+        $paginationInfo = isset($query->pagination)? $query->pagination: null ;
+
         $wildCardOption = ($wildCard === null) ? "default": $wildCard;
         $byDatesOptions = ($byDates === null) ? []: $byDates;
         $fields = ($customFields === null) ? $this->fields($schema): $customFields;
@@ -263,6 +264,14 @@ class GraphqlClient
         $selectorQuery =  (count($args["query"])>0)?
             preg_replace('/"([^"]+)"\s*:\s*/', '$1:', json_encode($args["query"][$selectorName])): json_encode([]) ;
         $finalQuery = "";
+        $byDatesOptions = 'byDate: {}';
+        if( count($args["byDatesOption"]) > 0){
+            $byDatesOptions = 'byDate: 
+                            { 
+                                start: "'.$args["byDatesOption"]["start"].'", 
+                                end: "'.$args["byDatesOption"]["end"].'" 
+                            }';
+        }
 
         switch ($isPagination){
             case true:
@@ -271,11 +280,7 @@ class GraphqlClient
                     '.$resolverQueryName.' (
                         input:{
                             wildCard: "'.$args["wildCardOption"].'"
-                            byDate: 
-                            { 
-                                start: "'.$args["byDatesOption"]["start"].'", 
-                                end: "'.$args["byDatesOption"]["end"].'" 
-                            }
+                            '.$byDatesOptions.'
                             '.$selectorName.': '. $selectorQuery  .'                            
                         }
                         limit:'.$args["paginationInfo"]["limit"].'

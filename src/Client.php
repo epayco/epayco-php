@@ -13,8 +13,8 @@ use Epayco\Exceptions\ErrorException;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "http://localhost:3000"; //LOCAL
-    //const BASE_URL = "https://api.secure.epayco.io"; DEV
+    //const BASE_URL = "http://localhost:3000"; //LOCAL
+    const BASE_URL = "https://api.secure.epayco.io"; //DEV
     //const BASE_URL = "https://api.secure.payco.co"; PROD
 
     const BASE_URL_SECURE = "https://secure.payco.co";
@@ -127,24 +127,36 @@ class Client extends GraphqlClient
         throw new ErrorException($lang, 102);
     }
 
-    public function graphql($query,$schema,$api_key)
+    public function graphql(
+        $query,
+        $schema,
+        $api_key,
+        $type,
+        $custom_key)
     {
         try{
-            $this->validate($query); //query validator
-            $schema = $query->action === "find" ? $schema."s": $schema;
-            $this->canPaginateSchema($query->action,$query->pagination,$schema);
-            $selectorParams = $this->paramsBuilder($query);
+            $queryString = "";
+            $initial_key = "";
+            switch ($type){
+                case "wrapper":
+                    $this->validate($query); //query validator
+                    $schema = $query->action === "find" ? $schema."s": $schema;
+                    $this->canPaginateSchema($query->action,$query->pagination,$schema);
+                    $selectorParams = $this->paramsBuilder($query);
 
-            $queryString = $this->queryString(
-                $selectorParams,
-                $schema,
-                $query->wildCard,
-                $query->byDates,
-                $query->customFields,
-                $query->pagination); //rows returned
-
+                    $queryString = $this->queryString(
+                        $selectorParams,
+                        $schema,
+                        $query); //rows returned
+                    $initial_key = $schema;
+                    break;
+                case "fixed":
+                    $queryString = $query;
+                    $initial_key = $custom_key;
+                    break;
+            }
             $result = $this->sendRequest($queryString,$api_key);
-            return $this->successResponse($result,$schema);
+            return $this->successResponse($result,$initial_key);
         }catch (\Exception $e){
             throw new ErrorException($e->getMessage(), 301);
         }
