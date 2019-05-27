@@ -14,8 +14,8 @@ class Client extends GraphqlClient
 {
 
     //const BASE_URL = "http://localhost:3000"; //LOCAL
-    //const BASE_URL = "https://api.secure.epayco.io"; //DEV
-    const BASE_URL = "https://api.secure.payco.co"; //PROD
+    const BASE_URL = "https://api.secure.epayco.io"; //DEV
+    //const BASE_URL = "https://api.secure.payco.co"; //PROD
 
     const BASE_URL_SECURE = "https://secure.payco.co";
     const IV = "0000000000000000";
