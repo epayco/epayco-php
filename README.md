@@ -64,9 +64,10 @@ $token = $epayco->token->create(array(
 ```php
 $customer = $epayco->customer->create(array(
     "token_card" => $token->id,
-    "name" => "Joe Doe",
+    "name" => "Joe",
+    "last_name" => "Doe", //This parameter is optional
     "email" => "joe@payco.co",
-    "default" => true
+    "default" => true,
     //Optional parameters: These parameters are important when validating the credit card transaction
     "city" => "Bogota",
     "address" => "Cr 4 # 55 36",
