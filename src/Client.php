@@ -80,7 +80,7 @@ class Client
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key);
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                 } else {
-                    $data["ip"] = getHostByName(getHostName());
+                    $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
                     $data["test"] = $test;
                     $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                 }

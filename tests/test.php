@@ -201,8 +201,31 @@ class AccessSDKTest extends PHPUnit_Framework_TestCase
         $this->assertGreaterThanOrEqual(1, count($response));
     }
 
-
-
+    public function testCashCreate()
+    {
+        $end_date = (new \DateTime())->add((new \DateInterval('P1D')))->format('Y-m-d H:i');
+        $response = $this->epayco->cash->create("efecty", array(
+            "invoice" => "1472050778",
+            "description" => "pay test",
+            "value" => "20000",
+            "tax" => "0",
+            "tax_base" => "0",
+            "currency" => "COP",
+            "type_person" => "0",
+            "doc_type" => "CC",
+            "doc_number" => "12344545",
+            "name" => "testing",
+            "last_name" => "PAYCO",
+            "email" => "test@test.com",
+            "cell_phone" => "3010000001",
+            "end_date" => $end_date,
+            "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+            "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+            "method_confirmation" => "GET",
+        ));
+        $this->assertGreaterThanOrEqual(1, count($response));
+    }
+    
     public function testPsebanks()
     {
         $response = $this->epayco->bank->pseBank();
