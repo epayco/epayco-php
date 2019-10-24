@@ -28,6 +28,11 @@ class Token extends Resource
         );
     }
 
+    /**
+     * Return id tokenize credit card without cv
+     * @param  array $options credit card info
+     * @return object
+     */
     public function createNoCvc($options = null)
     {
         return $this->request(
