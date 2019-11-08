@@ -110,6 +110,10 @@ class Subscriptions extends Resource
         );
     }
 
+    /**
+     * graphql query client epayco
+     * @return object
+     */
     public function query($query,$type,$custom_key = null){
 
         return $this->graphql($query,'subscription',$this->epayco->api_key,$type,$custom_key);

@@ -105,6 +105,10 @@ class Plan extends Resource
        );
    }
 
+    /**
+    * graphql query client epayco
+    * @return object
+    */
     public function query($query,$type,$custom_key = null){
 
         return $this->graphql($query,'plan',$this->epayco->api_key,$type,$custom_key);

@@ -83,12 +83,12 @@ class Customers extends Resource
         );
     }
 
-      //Start - Graphql Operations
-
+    /**
+     * graphql query client epayco
+     * @return object
+     */
       public function query($query,$type,$custom_key = null){
 
         return $this->graphql($query,'customer',$this->epayco->api_key,$type,$custom_key);
       }
-
-      //End - Graphql Operations
 }
