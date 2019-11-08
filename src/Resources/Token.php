@@ -27,7 +27,6 @@ class Token extends Resource
                $lang = $this->epayco->lang
         );
     }
-
     /**
      * Return id tokenize credit card without cv
      * @param  array $options credit card info
@@ -46,7 +45,11 @@ class Token extends Resource
             $lang = $this->epayco->lang
         );
     }
-
+    /**
+     * remove temporal card with cvs
+     * @param  array $options credit card info
+     * @return object
+     */
     public function remove($options = null)
     {
         return $this->request(
