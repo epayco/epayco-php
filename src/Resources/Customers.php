@@ -3,7 +3,6 @@
 namespace Epayco\Resources;
 
 use Epayco\Resource;
-use function PHPSTORM_META\type;
 
 /**
  * Customer methods
