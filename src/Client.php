@@ -10,8 +10,9 @@ use Epayco\Exceptions\ErrorException;
 /**
  * Client conection api epayco
  */
-class Client
+class Client extends GraphqlClient
 {
+
     const BASE_URL = "https://api.secure.payco.co";
     const BASE_URL_SECURE = "https://secure.payco.co";
     const IV = "0000000000000000";
@@ -121,5 +122,41 @@ class Client
             throw new ErrorException($lang, 107);
         }
         throw new ErrorException($lang, 102);
+    }
+
+    public function graphql(
+        $query,
+        $schema,
+        $api_key,
+        $type,
+        $custom_key)
+    {
+        try{
+            $queryString = "";
+            $initial_key = "";
+            switch ($type){
+                case "wrapper":
+                    $this->validate($query); //query validator
+                    $schema = $query->action === "find" ? $schema."s": $schema;
+                    $this->canPaginateSchema($query->action,$query->pagination,$schema);
+                    $selectorParams = $this->paramsBuilder($query);
+
+                    $queryString = $this->queryString(
+                        $selectorParams,
+                        $schema,
+                        $query); //rows returned
+                    $initial_key = $schema;
+                    break;
+                case "fixed":
+                    $queryString = $query;
+                    $initial_key = $custom_key;
+                    break;
+            }
+            $result = $this->sendRequest($queryString,$api_key);
+            return $this->successResponse($result,$initial_key);
+        }catch (\Exception $e){
+            throw new ErrorException($e->getMessage(), 301);
+        }
+
     }
 }

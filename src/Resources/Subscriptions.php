@@ -13,13 +13,17 @@ class Subscriptions extends Resource
     /**
      * Create subscription
      * @param  object $options data client and plan
+     * @param $type String
      * @return object
      */
-    public function create($options = null)
+    public function create($options = null,$type = "basic")
     {
+
+        $url = $type == "basic" ? "/recurring/v1/subscription/create" : "/recurring/v1/subscription/domiciliacion/create";
+
         return $this->request(
                "POST",
-               "/recurring/v1/subscription/create",
+               $url,
                $api_key = $this->epayco->api_key,
                $options,
                $private_key = $this->epayco->private_key,
@@ -104,5 +108,10 @@ class Subscriptions extends Resource
                $switch = false,
                $lang = $this->epayco->lang
         );
+    }
+
+    public function query($query,$type,$custom_key = null){
+
+        return $this->graphql($query,'subscription',$this->epayco->api_key,$type,$custom_key);
     }
 }

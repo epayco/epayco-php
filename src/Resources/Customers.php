@@ -3,6 +3,7 @@
 namespace Epayco\Resources;
 
 use Epayco\Resource;
+use function PHPSTORM_META\type;
 
 /**
  * Customer methods
@@ -26,7 +27,7 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang
         );
-    }
+    } 
 
     /**
      * Get client for id
@@ -82,4 +83,13 @@ class Customers extends Resource
                $lang = $this->epayco->lang
         );
     }
+
+      //Start - Graphql Operations
+
+      public function query($query,$type,$custom_key = null){
+
+        return $this->graphql($query,'customer',$this->epayco->api_key,$type,$custom_key);
+      }
+
+      //End - Graphql Operations
 }
