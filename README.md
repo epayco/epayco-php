@@ -277,6 +277,7 @@ $cash = $epayco->cash->create("efecty", array(
 $cash = $epayco->cash->transaction("id_transaction");
 ```
 
+
 #### Split Payments
 
 Previous requirements:
