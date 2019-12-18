@@ -100,7 +100,7 @@ $customer = $epayco->customer->update("id_client", array('name' => 'julianc'));
 $customer = $epayco->customer->delete(array(
     "franchise"  => "visa",
     "mask" => "457562******0326",
-    "customer_id"=>"f3DitY7tgtbxK5pEz"
+    "customer_id"=>"id_client"
     ));
 ```
 
