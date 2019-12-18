@@ -83,6 +83,24 @@ class Customers extends Resource
         );
     }
 
+     /**
+     * delete customer from client epayco
+     * @return object
+     */
+    public function delete($options = null)
+    {
+        return $this->request(
+               "POST",
+               "/v1/remove/token",
+               $api_key = $this->epayco->api_key,
+               $options,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang
+        );
+    }
+
     /**
      * graphql query client epayco
      * @return object
