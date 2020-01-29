@@ -37,7 +37,8 @@ class Client extends GraphqlClient
         $private_key,
         $test,
         $switch,
-        $lang
+        $lang,
+        $cash = null
     ) {
 
         /**
@@ -78,7 +79,7 @@ class Client extends GraphqlClient
                 }
             } elseif ($method == "POST") {
                 if ($switch) {
-                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key);
+                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key , $cash);
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                 } else {
                     $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());

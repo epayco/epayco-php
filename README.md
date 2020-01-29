@@ -183,6 +183,7 @@ $sub = $epayco->subscriptions->charge(array(
   "address" => "cr 44 55 66",
   "phone"=> "2550102",
   "cell_phone"=> "3010000001",
+   "ip" => "190.000.000.000"  // This is the client's IP, it is required
 ));
 ```
 
@@ -321,6 +322,7 @@ $pay = $epayco->charge->create(array(
     "cell_phone"=> "3010000001",
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",
+    "ip" => "190.000.000.000"  // This is the client's IP, it is required
 ));
 ```
 

@@ -21,7 +21,7 @@ class Util
             return $aux;
         }
 
-        public function mergeSet($data, $test, $lang, $private_key, $api_key)
+        public function mergeSet($data, $test, $lang, $private_key, $api_key, $cash)
         {
             $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
             $data["test"] = $test;
@@ -30,6 +30,19 @@ class Util
              * Init AES
              * @var PaycoAes
              */
+
+          if ($cash) {
+              $aes = new PaycoAes($private_key, Client::IV, $lang);
+              $adddata = array(
+                "public_key" => $api_key,
+                "i" => base64_encode(Client::IV),
+                "enpruebas" => $aes->encrypt($test),
+                "lenguaje" => Client::LENGUAGE,
+                "p" => "",
+            );
+            return array_merge($data, $adddata);
+                                   
+          }else{
             $aes = new PaycoAes($private_key, Client::IV, $lang);
             $encryptData = $aes->encryptArray($data);
             $adddata = array(
@@ -40,5 +53,6 @@ class Util
                 "p" => "",
             );
             return array_merge($encryptData, $adddata);
+        }
         }
 }
