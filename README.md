@@ -186,7 +186,7 @@ $sub = $epayco->subscriptions->charge(array(
   "address" => "cr 44 55 66",
   "phone"=> "2550102",
   "cell_phone"=> "3010000001",
-   "ip" => "190.000.000.000"  // This is the client's IP, it is required
+  "ip" => "190.000.000.000"  // This is the client's IP, it is required
 ));
 ```
 
@@ -214,6 +214,7 @@ $pse = $epayco->bank->create(array(
         "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "method_confirmation" => "GET",
+        "ip" => "190.000.000.000",  // This is the client's IP, it is required
         //Extra params: These params are optional and can be used by the commerce
         "extra1" => "",
         "extra2" => "",
@@ -272,6 +273,15 @@ $cash = $epayco->cash->create("efecty", array(
     "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "method_confirmation" => "GET",
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
+    //Extra params: These params are optional and can be used by the commerce
+    "extra1" => "",
+    "extra2" => "",
+    "extra3" => "",
+    "extra4" => "",
+    "extra5" => "",
+    "extra6" => "",
+    "extra7" => "",
 ));
 ```
 
@@ -337,7 +347,16 @@ $pay = $epayco->charge->create(array(
     "cell_phone"=> "3010000001",
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",
-    "ip" => "190.000.000.000"  // This is the client's IP, it is required
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
+    //Extra params: These params are optional and can be used by the commerce
+    "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
+    "extra1" => "",
+    "extra2" => "",
+    "extra3" => "",
+    "extra4" => "",
+    "extra5" => "",
+    "extra6" => "",
+    "extra7" => "",
 ));
 ```
 
