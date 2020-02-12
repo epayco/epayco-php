@@ -101,6 +101,28 @@ class Customers extends Resource
         );
     }
 
+    
+     /**
+     * add default card
+     * @return object
+     */
+    public function addDefaultCard($options = null)
+    {
+        return $this->request(
+               "POST",
+               "/payment/v1/customer/reasign/card/default",
+               $api_key = $this->epayco->api_key,
+               $options,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang,
+               $cash = false,
+               $safetyp = false,
+               $card = true
+        );
+    }
+
     /**
      * graphql query client epayco
      * @return object

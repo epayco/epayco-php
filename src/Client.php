@@ -38,7 +38,9 @@ class Client extends GraphqlClient
         $test,
         $switch,
         $lang,
-        $cash = null
+        $cash = null,
+        $safetyp = null,
+        $card = null
     ) {
 
         /**
@@ -81,10 +83,20 @@ class Client extends GraphqlClient
                 if ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key , $cash);
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
-                } else {
-                    $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
-                    $data["test"] = $test;
-                    $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+                 } else {
+                    if ($card) {
+                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+                  }else{
+                $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
+                  $data["test"] = $test;
+                  $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+                  }
+                }
+                if ($safetyp) {
+                    $headers2= array( "Accept" => "multipart/form-data");
+                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key , $cash);
+                         $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers2,$data, $options);
+                      
                 }
             } elseif ($method == "DELETE") {
                 $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);

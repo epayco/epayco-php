@@ -104,6 +104,19 @@ $customer = $epayco->customer->delete(array(
     ));
 ```
 
+#### Add new token default to card existed
+
+```php
+  $customer = $epayco->customer->addDefaultCard(array(
+     "customer_id"=>"id_client",
+     "token" => "**********zL4gFB",
+     "franchise"=> "american-express",
+     "mask"=> "373118*****7642"
+ ));
+
+```
+
+
 ### Plans
 
 #### Create
