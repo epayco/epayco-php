@@ -224,10 +224,11 @@ $pse = $epayco->bank->create(array(
         "email" => "no-responder@payco.co",
         "country" => "CO",
         "cell_phone" => "3010000001",
+        "ip" => "190.000.000.000",  // This is the client's IP, it is required
         "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
         "method_confirmation" => "GET",
-        "ip" => "190.000.000.000",  // This is the client's IP, it is required
+
         //Extra params: These params are optional and can be used by the commerce
         "extra1" => "",
         "extra2" => "",
@@ -283,10 +284,11 @@ $cash = $epayco->cash->create("efecty", array(
     "email" => "test@mailinator.com",
     "cell_phone" => "3010000001",
     "end_date" => "data_max_5_days",
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
     "method_confirmation" => "GET",
-    "ip" => "190.000.000.000",  // This is the client's IP, it is required
+
     //Extra params: These params are optional and can be used by the commerce
     "extra1" => "",
     "extra2" => "",
@@ -358,9 +360,10 @@ $pay = $epayco->charge->create(array(
     "address" => "cr 44 55 66",
     "phone"=> "2550102",
     "cell_phone"=> "3010000001",
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",
-    "ip" => "190.000.000.000",  // This is the client's IP, it is required
+
     //Extra params: These params are optional and can be used by the commerce
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
     "extra1" => "",
