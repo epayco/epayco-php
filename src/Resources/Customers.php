@@ -124,6 +124,28 @@ class Customers extends Resource
     }
 
     /**
+     * add new token
+     * @return object
+     */
+    public function addNewToken($options = null)
+    {
+        return $this->request(
+               "POST",
+               "/v1/customer/add/token",
+               $api_key = $this->epayco->api_key,
+               $options,
+               $private_key = $this->epayco->private_key,
+               $test = $this->epayco->test,
+               $switch = false,
+               $lang = $this->epayco->lang,
+               $cash = false,
+               $safetyp = false,
+               $card = true
+        );
+    }
+
+
+    /**
      * graphql query client epayco
      * @return object
      */
