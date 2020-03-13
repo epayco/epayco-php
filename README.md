@@ -116,6 +116,16 @@ $customer = $epayco->customer->delete(array(
 
 ```
 
+#### Add new token to customer existed
+
+```php
+    $customer = $epayco->customer->addNewToken(array(
+    "token_card" => "HyjnY3pBSjFtiQBRT",
+    "customer_id"=>"id_client"
+));
+
+```
+
 
 ### Plans
 
