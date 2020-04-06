@@ -174,7 +174,7 @@ $sub = $epayco->subscriptions->create(array(
   "doc_type" => "CC",
   "doc_number" => "5234567",
    //Optional parameter: if these parameter it's not send, system get ePayco dashboard's url_confirmation
-   "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+   "url_confirmation" => "https://ejemplo.com/confirmacion",
    "method_confirmation" => "POST"
 ));
 ```
@@ -235,8 +235,8 @@ $pse = $epayco->bank->create(array(
         "country" => "CO",
         "cell_phone" => "3010000001",
         "ip" => "190.000.000.000",  // This is the client's IP, it is required
-        "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-        "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+        "url_response" => "https://ejemplo.com/respuesta.html",
+        "url_confirmation" => "https://ejemplo.com/confirmacion",
         "method_confirmation" => "GET",
 
         //Extra params: These params are optional and can be used by the commerce
@@ -295,8 +295,8 @@ $cash = $epayco->cash->create("efecty", array(
     "cell_phone" => "3010000001",
     "end_date" => "data_max_5_days",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
-    "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-    "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+    "url_response" => "https://ejemplo.com/respuesta.html",
+    "url_confirmation" => "https://ejemplo.com/confirmacion",
     "method_confirmation" => "GET",
 
     //Extra params: These params are optional and can be used by the commerce
