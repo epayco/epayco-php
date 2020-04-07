@@ -34,6 +34,12 @@ require 'vendor/autoload.php';
 $ git clone https://github.com/epayco/epayco-php.git
 ```
 
+## Generate Bearer Token
+```
+$epaycoClient = new \Epayco\Client();
+$epaycoClient->authentication("API_KEY", "PRIVATE_KEY");		
+```
+
 ## Usage
 
 ```php
