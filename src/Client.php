@@ -71,7 +71,7 @@ class Client extends GraphqlClient
         /**
          * Set headers
          */
-        $headers= array("Content-Type" => "application/json","Accept" => "application/json","Type"=>'sdk-jwt',"Authorization"=>'Bearer '.$bearer_token );
+        $headers= array("Content-Type" => "application/json","Accept" => "application/json","Type"=>'sdk-jwt',"Authorization"=>'Bearer '.$bearer_token, "lang"=>"PHP"  );
 
         try {
             $options = array(
