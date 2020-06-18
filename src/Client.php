@@ -58,22 +58,32 @@ class Client extends GraphqlClient
             $data = $util->setKeys($data);
           }
         }
-//42677847
-        
-        /**
+        try {
+          /**
          * Set heaToken bearer
          */
-      $dataAuth =$this->authentication($api_key,$private_key);
-    $auth=gettype($dataAuth);
-   $json = json_decode($dataAuth);
-   $bearer_token=$json->bearer_token;
+        $dataAuth =$this->authentication($api_key,$private_key);
+        $auth=gettype($dataAuth);
+        $json = json_decode($dataAuth);
+        if(!$json->status)
+        {
+            throw new ErrorException($json->message);
+        }
+        $bearer_token=$json->bearer_token;
 
         /**
          * Set headers
          */
         $headers= array("Content-Type" => "application/json","Accept" => "application/json","Type"=>'sdk-jwt',"Authorization"=>'Bearer '.$bearer_token, "lang"=>"PHP"  );
+        }
+        catch (\Exception $e) {
+            echo $e->getMessage();
+            die();
+        }
 
         try {
+
+    
             $options = array(
               // 'auth' => new \Requests_Auth_Basic(array($api_key, '')),
                 'timeout' => 120,
@@ -199,29 +209,29 @@ class Client extends GraphqlClient
                 'public_key' => $api_key,
                 'private_key' => $private_key
             );
-         $json=  json_encode($data);
-$curl = curl_init();
+            $json=  json_encode($data);
+            $curl = curl_init();
 
-curl_setopt_array($curl, array(
-  CURLOPT_URL => "https://api.secure.payco.co/v1/auth/login",
-  CURLOPT_RETURNTRANSFER => true,
-  CURLOPT_ENCODING => "",
-  CURLOPT_MAXREDIRS => 10,
-  CURLOPT_TIMEOUT => 0,
-  CURLOPT_FOLLOWLOCATION => true,
-  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-  CURLOPT_CUSTOMREQUEST => "POST",
-  CURLOPT_POSTFIELDS =>$json,
-  CURLOPT_HTTPHEADER => array(
-    "Content-Type: application/json",
-    "type: sdk-jwt",
-    "Accept: application/json"
-  ),
-));
+            curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://api.secure.payco.co/v1/auth/login",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS =>$json,
+            CURLOPT_HTTPHEADER => array(
+                "Content-Type: application/json",
+                "type: sdk-jwt",
+                "Accept: application/json"
+            ),
+            ));
 
-$response = curl_exec($curl);
+            $response = curl_exec($curl);
 
-curl_close($curl);
+            curl_close($curl);
 
          return $response;
     }
