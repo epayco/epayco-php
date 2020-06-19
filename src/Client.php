@@ -65,6 +65,9 @@ class Client extends GraphqlClient
         $dataAuth =$this->authentication($api_key,$private_key);
         $auth=gettype($dataAuth);
         $json = json_decode($dataAuth);
+        if(!is_object($json)) {
+            throw new ErrorException("Error get bearer_token.");
+        }
         if(!$json->status)
         {
             throw new ErrorException($json->message);
