@@ -77,8 +77,12 @@ class Client extends GraphqlClient
         $headers= array("Content-Type" => "application/json","Accept" => "application/json","Type"=>'sdk-jwt',"Authorization"=>'Bearer '.$bearer_token, "lang"=>"PHP"  );
         }
         catch (\Exception $e) {
-            echo $e->getMessage();
-            die();
+            $data  = [
+                "status" => false,
+                "message" => $e->getMessage(),
+            ];
+            $objectReturnError = (object)$data;
+            return $objectReturnError;
         }
 
         try {
