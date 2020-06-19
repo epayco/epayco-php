@@ -80,6 +80,7 @@ class Client extends GraphqlClient
             $data  = [
                 "status" => false,
                 "message" => $e->getMessage(),
+                "data" => []
             ];
             $objectReturnError = (object)$data;
             return $objectReturnError;
