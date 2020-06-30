@@ -70,7 +70,7 @@ class Client extends GraphqlClient
               $auth=gettype($dataAuth);
               $json = json_decode($dataAuth);
               if(!is_object($json)) {
-                  throw new ErrorException("Error get bearer_token.");
+                  throw new ErrorException("Error get bearer_token.", 106);
               }
               if(!$json->status)
               {
@@ -79,7 +79,7 @@ class Client extends GraphqlClient
               $bearer_token=$json->bearer_token;
               $cookie_name = $api_key;
               $cookie_value = $bearer_token;
-              setcookie($cookie_name, $cookie_value, time() + (60 * 15), "/"); 
+              setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
             //  echo "token con login".$bearer_token;
               }else{
                 $bearer_token = $_COOKIE[$api_key];
@@ -150,7 +150,7 @@ class Client extends GraphqlClient
                 $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
             }
         } catch (\Exception $e) {
-            throw new ErrorException($e->getMessage(), 101);
+            throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
             if ($response->status_code >= 200 && $response->status_code <= 206) {
@@ -161,31 +161,31 @@ class Client extends GraphqlClient
             }
             if ($response->status_code == 400) {
                 $code = 0;
-                $message = "";
+                $message = "Bad request";
                 try {
                     $error = (array)json_decode($response->body)->errors[0];
                     $code = key($error);
                     $message = current($error);
                 } catch (\Exception $e) {
-                    throw new ErrorException($e->getMessage(), 102);
+                    throw new ErrorException($e->getMessage(), $e->getCode());
                 }
-                throw new ErrorException($e->getMessage(), 103);
+                throw new ErrorException($message , 103);
             }
             if ($response->status_code == 401) {
-                throw new ErrorException($e->getMessage(), 104);
+                throw new ErrorException('Unauthorized', 104);
             }
             if ($response->status_code == 404) {
-                throw new ErrorException($e->getMessage(), 105);
+                throw new ErrorException('Not found', 105);
             }
             if ($response->status_code == 403) {
-                throw new ErrorException($e->getMessage(), 106);
+                throw new ErrorException('Permission denegated', 106);
             }
             if ($response->status_code == 405) {
-                throw new ErrorException($e->getMessage(), 107);
+                throw new ErrorException('Not allowed', 107);
             }
-            throw new ErrorException($e->getMessage(), 102);
+            throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($e->getMessage(), 101);
+            throw new ErrorException($e->getMessage(), $e->getCode() );
         }
     }
 
