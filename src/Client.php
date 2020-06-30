@@ -169,21 +169,21 @@ class Client extends GraphqlClient
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), 102);
                 }
-                throw new ErrorException($lang, 103);
+                throw new ErrorException($e->getMessage(), 103);
             }
             if ($response->status_code == 401) {
-                throw new ErrorException($lang, 104);
+                throw new ErrorException($e->getMessage(), 104);
             }
             if ($response->status_code == 404) {
-                throw new ErrorException($lang, 105);
+                throw new ErrorException($e->getMessage(), 105);
             }
             if ($response->status_code == 403) {
-                throw new ErrorException($lang, 106);
+                throw new ErrorException($e->getMessage(), 106);
             }
             if ($response->status_code == 405) {
-                throw new ErrorException($lang, 107);
+                throw new ErrorException($e->getMessage(), 107);
             }
-            throw new ErrorException($lang, 102);
+            throw new ErrorException($e->getMessage(), 102);
         } catch (\Exception $e) {
             throw new ErrorException($e->getMessage(), 101);
         }
