@@ -376,13 +376,11 @@ $pay = $epayco->charge->create(array(
 
     //Extra params: These params are optional and can be used by the commerce
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
-    "extra1" => "",
-    "extra2" => "",
-    "extra3" => "",
-    "extra4" => "",
-    "extra5" => "",
-    "extra6" => "",
-    "extra7" => "",
+    "extras"=> array(
+        "extra1" => "data 1",
+        "extra2" => "data 2",
+        "extra3" => "data 3",
+    )
 ));
 ```
 
