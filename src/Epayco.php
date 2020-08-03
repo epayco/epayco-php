@@ -47,7 +47,7 @@ class Epayco
         $this->api_key = $options["apiKey"];
         $this->private_key = $options["privateKey"];
         $this->test = $options["test"] ? "TRUE" : "FALSE";
-        $this->lang = $options["lenguage"];
+        $this->lang = $options["language"];
 
         if (!$this->api_key && !$this->private_key && $this->test && $this->lang) {
             throw new ErrorException($this->lang, 100);
