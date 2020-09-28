@@ -31,9 +31,12 @@ class Cash extends Resource
             case 'redservi':
                     $url = "/restpagos/v2/efectivo/redservi";
                 break;
-             case 'puntored':
+            case 'puntored':
                     $url = "/restpagos/v2/efectivo/puntored";
                    break;
+            case 'sured':
+                    $url = "/restpagos/v2/efectivo/sured";
+                break;
             default:
                 throw new ErrorException($this->epayco->lang, 109);
                 break;
