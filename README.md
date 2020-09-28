@@ -319,6 +319,7 @@ $cash = $epayco->cash->create("gana", array());
 $cash = $epayco->cash->create("baloto", array());//expiration date can not be longer than 30 days
 $cash = $epayco->cash->create("redservi", array());//expiration date can not be longer than 30 days
 $cash = $epayco->cash->create("puntored", array());//expiration date can not be longer than 30 days
+$cash = $epayco->cash->create("sured", array());//expiration date can not be longer than 30 days
 ```
 
 
