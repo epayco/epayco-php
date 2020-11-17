@@ -271,7 +271,7 @@ $split_bank_pay = $epayco->bank->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee" => "10",
     "split_rule"=>'multiple',
-    "split_receivers" => json_encode(array(array('id'=>'9695','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
+    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
     array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
 ));
 ```
@@ -347,7 +347,7 @@ $split_cash_pay = $epayco->cash->create("efecty", array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee" => "10",
     "split_rule"=>'multiple',
-    "split_receivers" => json_encode(array(array('id'=>'9695','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
+    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
     array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
 ));
 ```
@@ -409,8 +409,8 @@ $split_pay = $epayco->charge->create(array(
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"10",
-   "split_rule"=>'multiple',
-   "split_receivers" => json_encode(array(array('id'=>'9695','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
-   array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
+    "split_rule"=>'multiple',
+    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
+    array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
 ));
 ```
