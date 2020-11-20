@@ -116,38 +116,38 @@ class Client extends GraphqlClient
                         $test = "FALSE";
                     }
 
-                    $response = \Requests::get(Client::BASE_URL_SECURE . $url, $headers, $options);
+                    $response = \Requests::get($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, $options);
                 } else {
-                    $response = \Requests::get(Client::BASE_URL . $url, $headers, $options);
+                    $response = \Requests::get($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
                 }
             } elseif ($method == "POST") {
 
                 if ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
 
-                    $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
+                    $response = \Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, json_encode($data), $options);
                 } else {
 
                     if ($card) {
 
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+                        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
                     } else {
 
                         $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
                         $data["test"] = $test;
 
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+                        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
                     }
 
                 }
                 if ($safetyp) {
                     $headers2 = array("Accept" => "multipart/form-data");
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
-                    $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers2, $data, $options);
+                    $response = \Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers2, $data, $options);
 
                 }
             } elseif ($method == "DELETE") {
-                $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
+                $response = \Requests::delete($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
             }
         } catch (\Exception $e) {
             throw new ErrorException($e->getMessage(), $e->getCode());
@@ -241,10 +241,24 @@ class Client extends GraphqlClient
 
         $url = "/v1/auth/login";
 
-        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
 
 
         return isset($response->body) ? $response->body : false;
     }
-}
 
+    protected function getEpaycoSecureBaseUrl($default)
+    {
+        $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV');
+
+        if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
+            return $default;
+        }
+
+        if ('stage' === $epaycoEnv || 'test' === $epaycoEnv) {
+            return 'https://secure2.epayco.io';
+        }
+
+        return $default;
+    }
+}

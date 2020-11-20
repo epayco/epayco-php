@@ -101,7 +101,7 @@ class GraphqlClient
                 'query' => $query
             ];
 
-            $response = \Requests::post(Client::BASE_URL . '/graphql', $headers, $body);
+            $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . '/graphql', $headers, $body);
 
         } catch (\Throwable $th) {
             return $th->getMessage();
@@ -382,5 +382,18 @@ class GraphqlClient
         return $response;
     }
 
-    
+    protected function getEpaycoBaseUrl($default)
+    {
+        $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV');
+
+        if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
+            return $default;
+        }
+
+        if ('stage' === $epaycoEnv || 'test' === $epaycoEnv) {
+            return 'https://api.secure.epayco.io';
+        }
+
+        return $default;
+    }
 }
