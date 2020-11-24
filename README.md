@@ -172,7 +172,7 @@ $sub = $epayco->subscriptions->create(array(
   "customer" => "id_client",
   "token_card" => "id_token",
   "doc_type" => "CC",
-  "doc_number" => "0000000000",
+  "doc_number" => "5234567",
    //Optional parameter: if these parameter it's not send, system get ePayco dashboard's url_confirmation
    "url_confirmation" => "https://ejemplo.com/confirmacion",
    "method_confirmation" => "POST"
@@ -205,7 +205,7 @@ $sub = $epayco->subscriptions->charge(array(
   "customer" => "id_client",
   "token_card" => "id_token",
   "doc_type" => "CC",
-  "doc_number" => "0000000000",
+  "doc_number" => "5234567",
   "address" => "cr 44 55 66",
   "phone"=> "2550102",
   "cell_phone"=> "3010000001",
@@ -228,7 +228,7 @@ $pse = $epayco->bank->create(array(
         "currency" => "COP",
         "type_person" => "0",
         "doc_type" => "CC",
-        "doc_number" => "0000000000",
+        "doc_number" => "numero_documento_cliente",
         "name" => "PRUEBAS",
         "last_name" => "PAYCO",
         "email" => "no-responder@payco.co",
@@ -261,6 +261,9 @@ $pse = $epayco->bank->get("transactionID");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
+
+Previous requirements:
+https://docs.epayco.co/tools/split-payment
 Split 1-1
 ```php
 $split_pay = $epayco->charge->create(array(
@@ -284,18 +287,11 @@ $split_pay = $epayco->charge->create(array(
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-<<<<<<< HEAD
     "split_primary_receiver_fee"=>"0",
     "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
     	 ))
-=======
-    "split_primary_receiver_fee" => "10",
-    "split_rule"=>'multiple',
-    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
-    array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
->>>>>>> 105f447f8dcf4825a25303ff42fb0d44e88e7671
 ));
 ```
 
@@ -313,7 +309,7 @@ $cash = $epayco->cash->create("efecty", array(
     "currency" => "COP",
     "type_person" => "0",
     "doc_type" => "CC",
-    "doc_number" => "0000000000",
+    "doc_number" => "numero_documento_cliente",
     "name" => "testing",
     "last_name" => "PAYCO",
     "email" => "test@mailinator.com",
@@ -344,7 +340,6 @@ $cash = $epayco->cash->create("gana", array());
 $cash = $epayco->cash->create("baloto", array());//expiration date can not be longer than 30 days
 $cash = $epayco->cash->create("redservi", array());//expiration date can not be longer than 30 days
 $cash = $epayco->cash->create("puntored", array());//expiration date can not be longer than 30 days
-$cash = $epayco->cash->create("sured", array());//expiration date can not be longer than 30 days
 ```
 
 
@@ -359,7 +354,6 @@ $cash = $epayco->cash->transaction("id_transaction");
 
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
-
 Split 1-1
 ```php
 $split_pay = $epayco->charge->create(array(
@@ -383,18 +377,11 @@ $split_pay = $epayco->charge->create(array(
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-<<<<<<< HEAD
     "split_primary_receiver_fee"=>"0",
     "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
     	 ))
-=======
-    "split_primary_receiver_fee" => "10",
-    "split_rule"=>'multiple',
-    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
-    array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
->>>>>>> 105f447f8dcf4825a25303ff42fb0d44e88e7671
 ));
 ```
 
@@ -407,7 +394,7 @@ $pay = $epayco->charge->create(array(
     "token_card" => $token->id,
     "customer_id" => $customer->data->customerId,
     "doc_type" => "CC",
-    "doc_number" => "0000000000",
+    "doc_number" => "numero_documento_cliente",
     "name" => "John",
     "last_name" => "Doe",
     "email" => "example@email.com",
@@ -455,9 +442,7 @@ $split_pay = $epayco->charge->create(array(
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"10",
-    "split_rule"=>'multiple',
-    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5'),
-    array('id'=>'P_CUST_ID_CLIENTE','total'=>'500','iva'=>'0','base_iva'=>'0','fee' => '5')))
+    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
 ));
 ```
 Split multiple:
