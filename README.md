@@ -261,10 +261,7 @@ $pse = $epayco->bank->get("transactionID");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-
-Previous requirements:
-https://docs.epayco.co/tools/split-payment
-Split 1-1
+#### Split 1-1
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -277,7 +274,7 @@ $split_pay = $epayco->charge->create(array(
     "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
 ));
 ```
-Split multiple:
+#### Split multiple:
 use the following attributes in case you need to do a dispersion with multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
@@ -354,7 +351,7 @@ $cash = $epayco->cash->transaction("id_transaction");
 
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
-Split 1-1
+#### Split 1-1
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -367,7 +364,7 @@ $split_pay = $epayco->charge->create(array(
     "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
 ));
 ```
-Split multiple:
+#### Split multiple:
 use the following attributes in case you need to do a dispersion with multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
@@ -432,7 +429,9 @@ $pay = $epayco->charge->transaction("id_transaction");
 
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
-Split 1-1
+
+#### Split 1-1
+
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -445,7 +444,7 @@ $split_pay = $epayco->charge->create(array(
     "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
 ));
 ```
-Split multiple:
+#### Split multiple:
 use the following attributes in case you need to do a dispersion with multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
