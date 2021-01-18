@@ -91,7 +91,7 @@ class GraphqlClient
     {
         $headers = [
             "Content-Type: application/json",
-            "Accept" => "application/json", 
+            "Accept" => "application/json",
             "type" => "sdk",
             "authorization" => "Basic " . base64_encode($api_key)
         ];
@@ -385,15 +385,9 @@ class GraphqlClient
     protected function getEpaycoBaseUrl($default)
     {
         $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV');
-
-        if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
-            return $default;
+        if($epaycoEnv){
+            return $epaycoEnv;
         }
-
-        if ('stage' === $epaycoEnv || 'test' === $epaycoEnv) {
-            return 'https://api.secure.epayco.io';
-        }
-
         return $default;
     }
 }
