@@ -262,16 +262,16 @@ Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
 #### Split 1-1
+
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->bank->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10",
-    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
+    "split_primary_receiver_fee"=>"10"
 ));
 ```
 #### Split multiple:
@@ -352,17 +352,18 @@ $cash = $epayco->cash->transaction("id_transaction");
 
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
+
 #### Split 1-1
+
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->cash->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10",
-    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
+    "split_primary_receiver_fee"=>"10"
 ));
 ```
 #### Split multiple:
@@ -442,8 +443,7 @@ $split_pay = $epayco->charge->create(array(
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10",
-    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
+    "split_primary_receiver_fee"=>"10"
 ));
 ```
 #### Split multiple:
