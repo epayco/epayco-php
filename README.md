@@ -253,7 +253,7 @@ $pse = $epayco->bank->create(array(
 #### Retrieve
 
 ```php
-$pse = $epayco->bank->get("transactionID");
+$pse = $epayco->bank->get("ticketId");
 ```
 
 #### Split Payments
