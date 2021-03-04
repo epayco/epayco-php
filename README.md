@@ -6,7 +6,7 @@ PHP wrapper for Epayco API
 ## Description
 
 API to interact with Epayco
-https://epayco.co/docs/api/
+https://api.epayco.co/
 
 ### Dependencias
 
