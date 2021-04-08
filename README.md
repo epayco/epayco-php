@@ -40,7 +40,7 @@ $ git clone https://github.com/epayco/epayco-php.git
 $epayco = new Epayco\Epayco(array(
     "apiKey" => "YOU_PUBLIC_API_KEY",
     "privateKey" => "YOU_PRIVATE_API_KEY",
-    "lenguage" => "ES",
+    "language" => "ES",
     "test" => true
 ));
 ```
