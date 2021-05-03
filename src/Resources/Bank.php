@@ -17,7 +17,7 @@ class Bank extends Resource
     {
         return $this->request(
                "GET",
-               "/restpagos/pse/bancos.json?public_key=" . $this->epayco->api_key,
+               "/pse/bancos.json?public_key=" . $this->epayco->api_key,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
@@ -36,7 +36,7 @@ class Bank extends Resource
     {
         return $this->request(
                "POST",
-               "/restpagos/pagos/debitos.json",
+               "/pagos/debitos.json",
                $api_key = $this->epayco->api_key,
                $options,
                $private_key = $this->epayco->private_key,
@@ -55,7 +55,7 @@ class Bank extends Resource
     {
         return $this->request(
                 "GET",
-                "/restpagos/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
+                "/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
                 $api_key = $this->epayco->api_key,
                 $uid,
                 $private_key = $this->epayco->private_key,

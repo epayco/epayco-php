@@ -20,22 +20,22 @@ class Cash extends Resource
         $url = null;
         switch ($type) {
             case "efecty":
-                $url = "/restpagos/v2/efectivo/efecty";
+                $url = "/v2/efectivo/efecty";
                 break;
             case "baloto":
-                $url = "/restpagos/v2/efectivo/baloto";
+                $url = "/v2/efectivo/baloto";
                 break;
             case "gana":
-                $url = "/restpagos/v2/efectivo/gana";
+                $url = "/v2/efectivo/gana";
                 break;
             case 'redservi':
-                    $url = "/restpagos/v2/efectivo/redservi";
+                    $url = "/v2/efectivo/redservi";
                 break;
             case 'puntored':
-                    $url = "/restpagos/v2/efectivo/puntored";
+                    $url = "/v2/efectivo/puntored";
                    break;
             case 'sured':
-                    $url = "/restpagos/v2/efectivo/sured";
+                    $url = "/v2/efectivo/sured";
                 break;
             default:
                 throw new ErrorException($this->epayco->lang, 109);
@@ -63,7 +63,7 @@ class Cash extends Resource
     {
         return $this->request(
                 "GET",
-                "/restpagos/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
+                "/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
                 $api_key = $this->epayco->api_key,
                 $uid,
                 $private_key = $this->epayco->private_key,

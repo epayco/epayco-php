@@ -14,7 +14,7 @@ class Client extends GraphqlClient
 {
 
     const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
+    const BASE_URL_SECURE = "https://secure.payco.co/restpagos";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -65,9 +65,7 @@ class Client extends GraphqlClient
              */
 
             if (!isset($_COOKIE[$api_key])) {
-                //  echo "Cookie named '" . $cookie_name . "' is not set!";
                 $dataAuth = $this->authentication($api_key, $private_key);
-                $auth = gettype($dataAuth);
                 $json = json_decode($dataAuth);
                 if (!is_object($json)) {
                     throw new ErrorException("Error get bearer_token.", 106);
@@ -79,18 +77,16 @@ class Client extends GraphqlClient
                 $cookie_name = $api_key;
                 $cookie_value = $bearer_token;
                 setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/");
-                //  echo "token con login".$bearer_token;
             } else {
                 $bearer_token = $_COOKIE[$api_key];
-                //   echo "token sin login".$bearer_token;
             }
 
         } catch (\Exception $e) {
-            $data = [
+            $data = array(
                 "status" => false,
                 "message" => $e->getMessage(),
-                "data" => []
-            ];
+                "data" => array()
+            );
             $objectReturnError = (object)$data;
             return $objectReturnError;
         }
@@ -159,11 +155,8 @@ class Client extends GraphqlClient
                 return json_decode($response->body);
             }
             if ($response->status_code == 400) {
-                $code = 0;
-                $message = "Bad request";
                 try {
                     $error = (array)json_decode($response->body)->errors[0];
-                    $code = key($error);
                     $message = current($error);
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
@@ -252,7 +245,7 @@ class Client extends GraphqlClient
 
         if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
             return $default;
-        } else {
+        } else if ($epaycoEnv) {
             return getenv('EPAYCO_PHP_SDK_ENV_REST');
         }
 
