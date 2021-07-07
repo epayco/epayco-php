@@ -3,6 +3,7 @@
 namespace Epayco\Resources;
 
 use Epayco\Resource;
+use Epayco\Exceptions\ErrorException;
 
 /**
  * Cash payment methods
