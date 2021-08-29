@@ -239,7 +239,7 @@ $pse = $epayco->bank->create(array(
         "url_confirmation" => "https://ejemplo.com/confirmacion",
         "method_confirmation" => "GET",
 
-        //Extra params: These params are optional and can be used by the commerce
+        //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
         "extra1" => "",
         "extra2" => "",
         "extra3" => "",
@@ -318,7 +318,7 @@ $cash = $epayco->cash->create("efecty", array(
     "url_confirmation" => "https://ejemplo.com/confirmacion",
     "method_confirmation" => "GET",
 
-    //Extra params: These params are optional and can be used by the commerce
+    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
     "extra1" => "",
     "extra2" => "",
     "extra3" => "",
@@ -411,9 +411,9 @@ $pay = $epayco->charge->create(array(
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",
-
-    //Extra params: These params are optional and can be used by the commerce
+    
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
+    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
         "extra1" => "data 1",
         "extra2" => "data 2",
         "extra3" => "data 3",
