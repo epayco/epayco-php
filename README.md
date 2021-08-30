@@ -215,6 +215,12 @@ $sub = $epayco->subscriptions->charge(array(
 
 ### PSE
 
+#### Listar bancos
+```php
+$bancos = $epayco->bank->pseBank();
+//$bancos representa un object con toda la lista de bancos disponibles para transacciones con PSE
+```
+
 #### Create
 
 ```php
