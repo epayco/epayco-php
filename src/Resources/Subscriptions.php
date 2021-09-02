@@ -33,6 +33,35 @@ class Subscriptions extends Resource
         );
     }
 
+
+    /**
+     * Update subscription
+     * @param  String $id     id subscription
+     * @param  object $options contenten update
+     * @return object
+     */
+    public function update($id, $options = null,$type = "basic")
+    {
+        switch ($type){
+            case "basic":
+                //TODO: update basic subscription in development
+                return null;
+                break;
+            case "domiciliacion":
+                return $this->request(
+                    "POST",
+                    "recurring/v1/subscription/domiciliacion/edit/" . $id . "/" . $this->epayco->api_key,
+                    $api_key = $this->epayco->api_key,
+                    $options,
+                    $private_key = $this->epayco->private_key,
+                    $test = $this->epayco->test,
+                    $switch = false,
+                    $lang = $this->epayco->lang
+                );
+                break;
+        }
+    }
+
     /**
      * Get subscription from id
      * @param  String $uid id subscription
@@ -119,3 +148,4 @@ class Subscriptions extends Resource
         return $this->graphql($query,'subscription',$this->epayco->api_key,$type,$custom_key);
     }
 }
+

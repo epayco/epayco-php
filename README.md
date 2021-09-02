@@ -6,7 +6,7 @@ PHP wrapper for Epayco API
 ## Description
 
 API to interact with Epayco
-https://epayco.co/docs/api/
+https://api.epayco.co/
 
 ### Dependencias
 
@@ -94,6 +94,39 @@ $customer = $epayco->customer->getList();
 $customer = $epayco->customer->update("id_client", array('name' => 'julianc'));
 ```
 
+#### Delete Customer's token
+
+```php
+$customer = $epayco->customer->delete(array(
+    "franchise"  => "visa",
+    "mask" => "457562******0326",
+    "customer_id"=>"id_client"
+    ));
+```
+
+#### Add new token default to card existed
+
+```php
+  $customer = $epayco->customer->addDefaultCard(array(
+     "customer_id"=>"id_client",
+     "token" => "**********zL4gFB",
+     "franchise"=> "american-express",
+     "mask"=> "373118*****7642"
+ ));
+
+```
+
+#### Add new token to customer existed
+
+```php
+    $customer = $epayco->customer->addNewToken(array(
+    "token_card" => "HyjnY3pBSjFtiQBRT",
+    "customer_id"=>"id_client"
+));
+
+```
+
+
 ### Plans
 
 #### Create
@@ -139,7 +172,10 @@ $sub = $epayco->subscriptions->create(array(
   "customer" => "id_client",
   "token_card" => "id_token",
   "doc_type" => "CC",
-  "doc_number" => "5234567"
+  "doc_number" => "5234567",
+   //Optional parameter: if these parameter it's not send, system get ePayco dashboard's url_confirmation
+   "url_confirmation" => "https://ejemplo.com/confirmacion",
+   "method_confirmation" => "POST"
 ));
 ```
 
@@ -173,10 +209,17 @@ $sub = $epayco->subscriptions->charge(array(
   "address" => "cr 44 55 66",
   "phone"=> "2550102",
   "cell_phone"=> "3010000001",
+  "ip" => "190.000.000.000"  // This is the client's IP, it is required
 ));
 ```
 
 ### PSE
+
+#### Listar bancos
+```php
+$bancos = $epayco->bank->pseBank();
+//$bancos representa un object con toda la lista de bancos disponibles para transacciones con PSE
+```
 
 #### Create
 
@@ -197,10 +240,12 @@ $pse = $epayco->bank->create(array(
         "email" => "no-responder@payco.co",
         "country" => "CO",
         "cell_phone" => "3010000001",
-        "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-        "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+        "ip" => "190.000.000.000",  // This is the client's IP, it is required
+        "url_response" => "https://ejemplo.com/respuesta.html",
+        "url_confirmation" => "https://ejemplo.com/confirmacion",
         "method_confirmation" => "GET",
-        //Extra params: These params are optional and can be used by the commerce
+
+        //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
         "extra1" => "",
         "extra2" => "",
         "extra3" => "",
@@ -214,7 +259,7 @@ $pse = $epayco->bank->create(array(
 #### Retrieve
 
 ```php
-$pse = $epayco->bank->get("transactionID");
+$pse = $epayco->bank->get("ticketId");
 ```
 
 #### Split Payments
@@ -222,16 +267,35 @@ $pse = $epayco->bank->get("transactionID");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
+#### Split 1-1
+
 ```php
-$split_bank_pay = $epayco->bank->create(array(
+$split_pay = $epayco->bank->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee" => "10",
-    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01')))
+    "split_primary_receiver_fee"=>"10"
+));
+```
+#### Split multiple:
+use the following attributes in case you need to do a dispersion with multiple providers
+```php
+$split_pay = $epayco->charge->create(array(
+    //Other customary parameters...
+    "splitpayment" => "true",
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee"=>"0",
+    "split_rule"=>'multiple', //sí se envía este campo el split_receivers se vuelve un campo obligatorio
+    "split_receivers" => array(
+    		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
+    		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
+    	 ) // Campo obligatorio sí se envía el campo split_rule
 ));
 ```
 
@@ -254,12 +318,34 @@ $cash = $epayco->cash->create("efecty", array(
     "last_name" => "PAYCO",
     "email" => "test@mailinator.com",
     "cell_phone" => "3010000001",
-    "end_date" => "data_max_5_days",
-    "url_response" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
-    "url_confirmation" => "https:/secure.payco.co/restpagos/testRest/endpagopse.php",
+    "end_date" => "data_max_5_days", // yy-mm-dd
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
+    "url_response" => "https://ejemplo.com/respuesta.html",
+    "url_confirmation" => "https://ejemplo.com/confirmacion",
     "method_confirmation" => "GET",
+
+    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
+    "extra1" => "",
+    "extra2" => "",
+    "extra3" => "",
+    "extra4" => "",
+    "extra5" => "",
+    "extra6" => "",
+    "extra7" => "",
 ));
 ```
+
+
+#### list
+
+```php
+$cash = $epayco->cash->create("efecty", array());
+$cash = $epayco->cash->create("gana", array());
+$cash = $epayco->cash->create("baloto", array());//expiration date can not be longer than 30 days
+$cash = $epayco->cash->create("redservi", array());//expiration date can not be longer than 30 days
+$cash = $epayco->cash->create("puntored", array());//expiration date can not be longer than 30 days
+```
+
 
 #### Retrieve
 
@@ -267,21 +353,41 @@ $cash = $epayco->cash->create("efecty", array(
 $cash = $epayco->cash->transaction("id_transaction");
 ```
 
+
 #### Split Payments
 
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
+#### Split 1-1
+
 ```php
-$split_cash_pay = $epayco->cash->create("efecty", array(
+$split_pay = $epayco->cash->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee" => "10",
-    "split_receivers" => json_encode(array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01')))
+    "split_primary_receiver_fee"=>"10"
+));
+```
+#### Split multiple:
+use the following attributes in case you need to do a dispersion with multiple providers
+```php
+$split_pay = $epayco->charge->create(array(
+    //Other customary parameters...
+    "splitpayment" => "true",
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee"=>"0",
+    "split_rule"=>'multiple', // si se envía este parámetro el campo split_receivers se vuelve obligatorio
+    "split_receivers" => array(
+    		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
+    		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
+    	 ) // Campo obligatorio sí se envía split_rule
 ));
 ```
 
@@ -308,8 +414,17 @@ $pay = $epayco->charge->create(array(
     "address" => "cr 44 55 66",
     "phone"=> "2550102",
     "cell_phone"=> "3010000001",
+    "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",
+    
+    "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
+    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
+        "extra1" => "data 1",
+        "extra2" => "data 2",
+        "extra3" => "data 3",
+        "extra4" => "data 4",
+        "extra5" => "data 5"
 ));
 ```
 
@@ -324,6 +439,8 @@ $pay = $epayco->charge->transaction("id_transaction");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
+#### Split 1-1
+
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -332,7 +449,24 @@ $split_pay = $epayco->charge->create(array(
     "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
     "split_type" => "02",
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10",
-    "split_receivers" => array(array('id'=>'P_CUST_ID_CLIENTE 1ST RECEIVER','fee'=>'1000','fee_type' => '01'))
+    "split_primary_receiver_fee"=>"10"
+));
+```
+#### Split multiple:
+use the following attributes in case you need to do a dispersion with multiple providers
+```php
+$split_pay = $epayco->charge->create(array(
+    //Other customary parameters...
+    "splitpayment" => "true",
+    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
+    "split_type" => "02",
+    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
+    "split_primary_receiver_fee"=>"0",
+    "split_rule"=>'multiple', // sí se envía este parámetro el campo split_receivers se vuelve obligatorio
+    "split_receivers" => array(
+    		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
+    		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
+    	 ) //Campo obligatorio sí se envía split_rule
 ));
 ```
