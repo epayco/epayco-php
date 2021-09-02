@@ -15,11 +15,7 @@ https://api.epayco.co/
 ## Installation
 
 ```javascript
-{
-  "require" : {
-    "epayco/epayco-php" : "dev-master"
-  }
-}
+composer require epayco/epayco-php
 ```
 
 Add `autoload` to composer
