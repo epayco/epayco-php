@@ -263,21 +263,9 @@ $pse = $epayco->bank->get("ticketId");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
 
-```php
-$split_pay = $epayco->bank->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+#### Split payment
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -355,21 +343,9 @@ $cash = $epayco->cash->transaction("id_transaction");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
+#### Split Payment:
 
-```php
-$split_pay = $epayco->cash->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -435,21 +411,9 @@ $pay = $epayco->charge->transaction("id_transaction");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
+#### Split payment:
 
-```php
-$split_pay = $epayco->charge->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
