@@ -13,7 +13,7 @@ use Epayco\Exceptions\ErrorException;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://api.secure.epayco.io";
+    const BASE_URL = "https://api.secure.payco.co";
     const BASE_URL_SECURE = "https://secure.payco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
@@ -185,7 +185,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($e->getMessage(), $e->getCode() );
+            throw new ErrorException($lang, $e->getCode() );
         }
     }
 
@@ -226,12 +226,11 @@ class Client extends GraphqlClient
     }
 
     public function authentication($api_key, $private_key)
-    {
+    {   
         $data = array(
             'public_key' => $api_key,
             'private_key' => $private_key
         );
-
         $headers = array("Content-Type" => "application/json", "Accept" => "application/json", "Type" => 'sdk-jwt', "lang" => "PHP");
 
         $options = array(
@@ -240,9 +239,7 @@ class Client extends GraphqlClient
         );
 
         $url = "/v1/auth/login";
-
         $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
-
 
         return isset($response->body) ? $response->body : false;
     }

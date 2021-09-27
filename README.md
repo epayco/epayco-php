@@ -356,10 +356,10 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', // si se envía este parámetro el campo split_receivers se vuelve obligatorio
-    "split_receivers" => array(
+    "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 ) // Campo obligatorio sí se envía split_rule
+    	 )) // Campo obligatorio sí se envía split_rule
 ));
 ```
 
