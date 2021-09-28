@@ -38,6 +38,11 @@ class Cash extends Resource
             case 'sured':
                     $url = "/restpagos/v2/efectivo/sured";
                 break;
+            case 'apostar':
+                    $url = "/restpagos/v2/efectivo/apostar";
+                break;
+            case 'susuerte':
+                    $url = "/restpagos/v2/efectivo/susuerte";
             default:
                 throw new ErrorException($this->epayco->lang, 109);
                 break;
