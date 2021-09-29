@@ -43,6 +43,7 @@ class Cash extends Resource
                 break;
             case 'susuerte':
                     $url = "/v2/efectivo/susuerte";
+                    break;
             default:
                 throw new ErrorException($this->epayco->lang, 109);
                 break;
