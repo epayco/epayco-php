@@ -177,7 +177,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($e->getMessage(), $e->getCode());
+            throw new ErrorException($lang, $e->getCode());
         }
     }
 
@@ -223,7 +223,6 @@ class Client extends GraphqlClient
             'public_key' => $api_key,
             'private_key' => $private_key
         );
-
         $headers = array("Content-Type" => "application/json", "Accept" => "application/json", "Type" => 'sdk-jwt', "lang" => "PHP");
 
         $options = array(
@@ -232,9 +231,7 @@ class Client extends GraphqlClient
         );
 
         $url = "/v1/auth/login";
-
         $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
-
 
         return isset($response->body) ? $response->body : false;
     }
