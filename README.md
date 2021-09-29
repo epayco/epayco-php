@@ -239,7 +239,7 @@ $pse = $epayco->bank->create(array(
         "ip" => "190.000.000.000",  // This is the client's IP, it is required
         "url_response" => "https://ejemplo.com/respuesta.html",
         "url_confirmation" => "https://ejemplo.com/confirmacion",
-        "method_confirmation" => "GET",
+        "metodoconfirmacion" => "GET",
 
         //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
         "extra1" => "",
@@ -263,21 +263,9 @@ $pse = $epayco->bank->get("ticketId");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
 
-```php
-$split_pay = $epayco->bank->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+#### Split payment
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -288,10 +276,10 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', //sí se envía este campo el split_receivers se vuelve un campo obligatorio
-    "split_receivers" => array(
+    "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 ) // Campo obligatorio sí se envía el campo split_rule
+    	 )) // Campo obligatorio sí se envía el campo split_rule
 ));
 ```
 
@@ -355,21 +343,9 @@ $cash = $epayco->cash->transaction("id_transaction");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
+#### Split Payment:
 
-```php
-$split_pay = $epayco->cash->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -380,10 +356,10 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', // si se envía este parámetro el campo split_receivers se vuelve obligatorio
-    "split_receivers" => array(
+    "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 ) // Campo obligatorio sí se envía split_rule
+    	 )) // Campo obligatorio sí se envía split_rule
 ));
 ```
 
@@ -435,21 +411,9 @@ $pay = $epayco->charge->transaction("id_transaction");
 Previous requirements:
 https://docs.epayco.co/tools/split-payment
 
-#### Split 1-1
+#### Split payment:
 
-```php
-$split_pay = $epayco->charge->create(array(
-    //Other customary parameters...
-    "splitpayment" => "true",
-    "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_merchant_id" => "P_CUST_ID_CLIENTE COMMERCE",
-    "split_type" => "02",
-    "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
-    "split_primary_receiver_fee"=>"10"
-));
-```
-#### Split multiple:
-use the following attributes in case you need to do a dispersion with multiple providers
+use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
 $split_pay = $epayco->charge->create(array(
     //Other customary parameters...
@@ -460,9 +424,9 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', // sí se envía este parámetro el campo split_receivers se vuelve obligatorio
-    "split_receivers" => array(
+    "split_receivers" => json_encode(array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 ) //Campo obligatorio sí se envía split_rule
+    	 )) //Campo obligatorio sí se envía split_rule
 ));
 ```
