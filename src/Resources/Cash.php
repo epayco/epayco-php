@@ -39,10 +39,10 @@ class Cash extends Resource
                     $url = "/v2/efectivo/sured";
                 break;
             case 'apostar':
-                    $url = "/restpagos/v2/efectivo/apostar";
+                    $url = "/v2/efectivo/apostar";
                 break;
             case 'susuerte':
-                    $url = "/restpagos/v2/efectivo/susuerte";
+                    $url = "/v2/efectivo/susuerte";
             default:
                 throw new ErrorException($this->epayco->lang, 109);
                 break;
@@ -50,13 +50,13 @@ class Cash extends Resource
         return $this->request(
                 "POST",
                 $url,
-                $api_key = $this->epayco->api_key,
+                $this->epayco->api_key,
                 $options,
-                $private_key = $this->epayco->private_key,
-                $test = $this->epayco->test,
-                $switch = true,
-                $lang = $this->epayco->lang,
-                $cash = true
+                $this->epayco->private_key,
+                $this->epayco->test,
+                true,
+                $this->epayco->lang,
+                true
         );
     }
 
@@ -70,12 +70,12 @@ class Cash extends Resource
         return $this->request(
                 "GET",
                 "/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
-                $api_key = $this->epayco->api_key,
+                $this->epayco->api_key,
                 $uid,
-                $private_key = $this->epayco->private_key,
-                $test = $this->epayco->test,
-                $switch = true,
-                $lang = $this->epayco->lang
+                $this->epayco->private_key,
+                $this->epayco->test,
+                true,
+                $this->epayco->lang
         );
     }
 }
