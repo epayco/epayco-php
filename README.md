@@ -308,7 +308,7 @@ $cash = $epayco->cash->create("efecty", array(
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://ejemplo.com/respuesta.html",
     "url_confirmation" => "https://ejemplo.com/confirmacion",
-    "method_confirmation" => "GET",
+    "metodoconfirmacion" => "GET",
 
     //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
     "extra1" => "",
@@ -390,7 +390,8 @@ $pay = $epayco->charge->create(array(
     "cell_phone"=> "3010000001",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
-    "url_confirmation" => "https://tudominio.com/confirmacion.php",
+    "url_confirmation" => "https://tudominio.com/confirmacion.php",\
+    "method_confirmation" => "Get"
     
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
     //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
