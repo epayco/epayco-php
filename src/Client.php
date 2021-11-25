@@ -15,6 +15,7 @@ class Client extends GraphqlClient
 
     const BASE_URL = "https://api.secure.payco.co";
     const BASE_URL_SECURE = "https://secure.payco.co";
+    const BASE_URL_APIFY = "https://apify.epayco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -40,7 +41,8 @@ class Client extends GraphqlClient
         $lang,
         $cash = null,
         $safetyp = null,
-        $card = null
+        $card = null,
+        $apify = false
     )
     {
 
@@ -52,7 +54,9 @@ class Client extends GraphqlClient
         /**
          * Switch traslate keys array petition in secure
          */
-        if ($switch && is_array($data)) {
+        if($apify){
+            $data = $util->setKeys_apify($data);
+        }else if ($switch && is_array($data)) {
             if ($safetyp) {
                 $data = $util->setKeys($data, $safetyp);
             } else {
