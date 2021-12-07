@@ -453,7 +453,7 @@ $pay = $epayco->daviplata->create(array(
     "value" => "100",
     "tax" => "0",
     "tax_base" => "0",
-    "method_confirmation":""
+    "method_confirmation" => ""
 ));
 ```
 

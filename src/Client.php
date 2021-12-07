@@ -40,7 +40,6 @@ class Client extends GraphqlClient
         $switch,
         $lang,
         $cash = null,
-        $safetyp = null,
         $card = null,
         $apify = false
     )
@@ -57,11 +56,7 @@ class Client extends GraphqlClient
         if($apify){
             $data = $util->setKeys_apify($data);
         }else if ($switch && is_array($data)) {
-            if ($safetyp) {
-                $data = $util->setKeys($data, $safetyp);
-            } else {
-                $data = $util->setKeys($data);
-            }
+            $data = $util->setKeys($data);
         }
         try {
             /**
@@ -142,12 +137,6 @@ class Client extends GraphqlClient
 
                         $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                     }
-
-                }
-                if ($safetyp) {
-                    $headers2 = array("Accept" => "multipart/form-data");
-                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
-                    $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers2, $data, $options);
 
                 }
             } elseif ($method == "DELETE") {

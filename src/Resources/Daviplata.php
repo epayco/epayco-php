@@ -5,9 +5,9 @@ namespace Epayco\Resources;
 use Epayco\Resource;
 
 /**
- * Charge payment methods
+ * Daviplata payment methods
  */
-class Charge extends Resource
+class Daviplata extends Resource
 {
     /**
      * Create daviplata trx

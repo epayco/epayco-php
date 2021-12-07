@@ -10,6 +10,7 @@ use Epayco\Resources\Plan;
 use Epayco\Resources\Subscriptions;
 use Epayco\Resources\Token;
 use Epayco\Resources\Daviplata;
+use Epayco\Resources\Safetypay;
 
 /**
  * Global class constructor
@@ -62,5 +63,6 @@ class Epayco
         $this->cash = new Cash($this);
         $this->charge = new Charge($this);
         $this->daviplata = new Daviplata($this);
+        $this->safetypay = new Safetypay;
     }
 }
