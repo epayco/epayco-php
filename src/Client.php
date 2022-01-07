@@ -15,6 +15,7 @@ class Client extends GraphqlClient
 
     const BASE_URL = "https://api.secure.payco.co";
     const BASE_URL_SECURE = "https://secure.payco.co/restpagos";
+    const BASE_URL_APIFY = "https://apify.epayco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -39,8 +40,8 @@ class Client extends GraphqlClient
         $switch,
         $lang,
         $cash = null,
-        $safetyp = null,
-        $card = null
+        $card = null,
+        $apify = false
     )
     {
 
@@ -52,12 +53,10 @@ class Client extends GraphqlClient
         /**
          * Switch traslate keys array petition in secure
          */
-        if ($switch && is_array($data)) {
-            if ($safetyp) {
-                $data = $util->setKeys($data, $safetyp);
-            } else {
-                $data = $util->setKeys($data);
-            }
+        if($apify){
+            $data = $util->setKeys_apify($data);
+        }else if ($switch && is_array($data)) {
+            $data = $util->setKeys($data);
         }
         try {
             /**
@@ -133,12 +132,6 @@ class Client extends GraphqlClient
 
                         $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
                     }
-
-                }
-                if ($safetyp) {
-                    $headers2 = array("Accept" => "multipart/form-data");
-                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
-                    $response = \Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers2, $data, $options);
 
                 }
             } elseif ($method == "DELETE") {

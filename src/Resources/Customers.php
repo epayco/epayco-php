@@ -118,7 +118,6 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang,
                $cash = false,
-               $safetyp = false,
                $card = true
         );
     }
@@ -139,7 +138,6 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang,
                $cash = false,
-               $safetyp = false,
                $card = true
         );
     }

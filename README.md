@@ -424,9 +424,45 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', // sí se envía este parámetro el campo split_receivers se vuelve obligatorio
-    "split_receivers" => json_encode(array(
+    "split_receivers" => array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 )) //Campo obligatorio sí se envía split_rule
+    	 ) //Campo obligatorio sí se envía split_rule
+));
+```
+
+### Daviplata
+
+### Create
+
+```php
+$pay = $epayco->daviplata->create(array(
+    "doc_type" => "CC",
+    "document" => "1053814580414720",
+    "name" => "Testing",
+    "last_name" => "PAYCO",
+    "email" => "exmaple@epayco.co",
+    "ind_country" => "CO",
+    "phone" => "314853222200033",
+    "country" => "CO",
+    "city" => "bogota",
+    "address" => "Calle de prueba",
+    "ip" => "189.176.0.1",
+    "currency" => "COP",
+    "description" => "ejemplo de transaccion con daviplata",
+    "value" => "100",
+    "tax" => "0",
+    "tax_base" => "0",
+    "method_confirmation" => ""
+));
+```
+
+### Confirm 
+
+```php
+$pay = $epayco->daviplata->confirm(array(
+    "ref_payco" => "45508846", // It is obtained from the create response
+    "id_session_token" => "45081749", // It is obtained from the create response
+    "otp" => "2580"
 ));
 ```
