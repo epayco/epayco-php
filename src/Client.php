@@ -104,34 +104,27 @@ class Client extends GraphqlClient
 
             if ($method == "GET") {
                 if ($switch) {
-                    if ($test) {
-                        $test = "TRUE";
-                    } else {
-                        $test = "FALSE";
-                    }
-
-                    $response = \Requests::get($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, $options);
+                    $_url = $this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url;
                 } else {
-                    $response = \Requests::get($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
+                    $_url = $this->getEpaycoBaseUrl(Client::BASE_URL) . $url;
                 }
-            } elseif ($method == "POST") {
 
-                if ($switch) {
+                $response = \Requests::get($_url, $headers, $options);
+            } elseif ($method == "POST") {
+                if($apify){
+                    $response = \Requests::post($this->getEpaycoBaseApify(Client::BASE_URL_APIFY). $url, $headers, json_encode($data), $options);
+                }
+                elseif ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
 
                     $response = \Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, json_encode($data), $options);
                 } else {
 
-                    if ($card) {
-
-                        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
-                    } else {
-
+                    if (!$card) {
                         $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
                         $data["test"] = $test;
-
-                        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
                     }
+                    $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
 
                 }
             } elseif ($method == "DELETE") {
@@ -239,6 +232,15 @@ class Client extends GraphqlClient
             return getenv('EPAYCO_PHP_SDK_ENV_REST');
         }
 
+        return $default;
+    }
+
+    protected function getEpaycoBaseApify($default)
+    {
+        $epaycoEnv = getenv('BASE_URL_APIFY');
+        if($epaycoEnv){
+            return $epaycoEnv;
+        }
         return $default;
     }
 }
