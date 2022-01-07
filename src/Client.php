@@ -109,34 +109,27 @@ class Client extends GraphqlClient
 
             if ($method == "GET") {
                 if ($switch) {
-                    if ($test) {
-                        $test = "TRUE";
-                    } else {
-                        $test = "FALSE";
-                    }
-
-                    $response = \Requests::get(Client::BASE_URL_SECURE . $url, $headers, $options);
+                    $_url = Client::BASE_URL_SECURE . $url;
                 } else {
-                    $response = \Requests::get(Client::BASE_URL . $url, $headers, $options);
+                    $_url = Client::BASE_URL . $url;
                 }
-            } elseif ($method == "POST") {
 
-                if ($switch) {
+                $response = \Requests::get($_url, $headers, $options);
+            } elseif ($method == "POST") {
+                if($apify){
+                    $response = \Requests::post(Client::BASE_URL_APIFY . $url, $headers, json_encode($data), $options);
+                }
+                elseif ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
 
                     $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
                 } else {
 
-                    if ($card) {
-
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
-                    } else {
-
+                    if (!$card) {
                         $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
                         $data["test"] = $test;
-
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                     }
+                    $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
 
                 }
             } elseif ($method == "DELETE") {

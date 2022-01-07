@@ -63,6 +63,6 @@ class Epayco
         $this->cash = new Cash($this);
         $this->charge = new Charge($this);
         $this->daviplata = new Daviplata($this);
-        $this->safetypay = new Safetypay;
+        $this->safetypay = new Safetypay($this);
     }
 }
