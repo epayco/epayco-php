@@ -25,6 +25,8 @@ class Daviplata extends Resource
                $test = $this->epayco->test,
                $switch = false,
                $lang = $this->epayco->lang,
+               false,
+               false,
                $apify = true
         );
     }
@@ -45,6 +47,8 @@ class Daviplata extends Resource
                 $test = $this->epayco->test,
                 $switch = true,
                 $lang = $this->epayco->lang,
+                false,
+                false,
                 $apify = true
         );
     }
