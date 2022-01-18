@@ -70,11 +70,11 @@ class Client extends GraphqlClient
               if(!is_object($json)) {
                   throw new ErrorException("Error get bearer_token.", 106);
               }
-              if(!$json->status)
+              $bearer_token=$json->bearer_token ?? $json->token ?? false;
+              if(!$bearer_token)
               {
-                  throw new ErrorException($json->message);
+                  throw new ErrorException($lang, 106);
               }
-              $bearer_token=$json->bearer_token ?? $json->token;
               $cookie_name = $api_key;
               $cookie_value = $bearer_token;
               setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
@@ -170,7 +170,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($lang, $e->getCode() );
+            throw new ErrorException($e->getMessage(), $e->getCode());
         }
     }
 

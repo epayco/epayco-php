@@ -25,6 +25,8 @@ class Safetypay extends Resource
                $test = $this->epayco->test,
                $switch = false,
                $lang = $this->epayco->lang,
+               false,
+               false,
                $apify = true
         );
     }
