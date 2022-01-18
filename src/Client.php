@@ -62,21 +62,24 @@ class Client extends GraphqlClient
             /**
              * Set heaToken bearer
              */
-
-            if (!isset($_COOKIE[$api_key])) {
-                $dataAuth = $this->authentication($api_key, $private_key);
-                $json = json_decode($dataAuth);
-                if (!is_object($json)) {
-                    throw new ErrorException("Error get bearer_token.", 106);
-                }
-                if (!$json->status) {
-                    throw new ErrorException($json->message);
-                }
-                $bearer_token = $json->bearer_token;
-                $cookie_name = $api_key;
-                $cookie_value = $bearer_token;
-                setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/");
-            } else {
+         
+        if(!isset($_COOKIE[$api_key])) {
+            //  echo "Cookie named '" . $cookie_name . "' is not set!";
+              $dataAuth =$this->authentication($api_key,$private_key, $apify);
+              $json = json_decode($dataAuth);
+              if(!is_object($json)) {
+                  throw new ErrorException("Error get bearer_token.", 106);
+              }
+              if(!$json->status)
+              {
+                  throw new ErrorException($json->message);
+              }
+              $bearer_token=$json->bearer_token ?? $json->token;
+              $cookie_name = $api_key;
+              $cookie_value = $bearer_token;
+              setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
+            //  echo "token con login".$bearer_token;
+              }else{
                 $bearer_token = $_COOKIE[$api_key];
             }
 
@@ -203,8 +206,8 @@ class Client extends GraphqlClient
 
     }
 
-    public function authentication($api_key, $private_key)
-    {
+    public function authentication($api_key, $private_key, $apify)
+    {   
         $data = array(
             'public_key' => $api_key,
             'private_key' => $private_key
@@ -216,8 +219,13 @@ class Client extends GraphqlClient
             'connect_timeout' => 120,
         );
 
-        $url = "/v1/auth/login";
-        $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
+        if($apify){
+            $token = base64_encode($api_key.":".$private_key);
+            $headers["Authorization"] = "Basic ".$token;
+            $data = array();
+        }
+        $url = $apify ? $this->getEpaycoBaseApify(Client::BASE_URL_AIFY). "/login" : $this->getEpaycoBaseUrl(Client::BASE_URL)."/v1/auth/login";
+        $response = \Requests::post($url, $headers, json_encode($data), $options);
 
         return isset($response->body) ? $response->body : false;
     }
