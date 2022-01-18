@@ -65,8 +65,7 @@ class Client extends GraphqlClient
          
         if(!isset($_COOKIE[$api_key])) {
             //  echo "Cookie named '" . $cookie_name . "' is not set!";
-              $dataAuth =$this->authentication($api_key,$private_key);
-              $auth=gettype($dataAuth);
+              $dataAuth =$this->authentication($api_key,$private_key, $apify);
               $json = json_decode($dataAuth);
               if(!is_object($json)) {
                   throw new ErrorException("Error get bearer_token.", 106);
@@ -75,7 +74,7 @@ class Client extends GraphqlClient
               {
                   throw new ErrorException($json->message);
               }
-              $bearer_token=$json->bearer_token;
+              $bearer_token=$json->bearer_token ?? $json->token;
               $cookie_name = $api_key;
               $cookie_value = $bearer_token;
               setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
@@ -211,7 +210,7 @@ class Client extends GraphqlClient
 
     }
 
-    public function authentication($api_key, $private_key)
+    public function authentication($api_key, $private_key, $apify)
     {   
         $data = array(
             'public_key' => $api_key,
@@ -224,8 +223,13 @@ class Client extends GraphqlClient
             'connect_timeout' => 120,
         );
 
-        $url = "/v1/auth/login";
-        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+        if($apify){
+            $token = base64_encode($api_key.":".$private_key);
+            $headers["Authorization"] = "Basic ".$token;
+            $data = [];
+        }
+        $url = $apify ? Client::BASE_URL_AIFY. "/login" : Client::BASE_URL."/v1/auth/login";
+        $response = \Requests::post($url, $headers, json_encode($data), $options);
 
         return isset($response->body) ? $response->body : false;
     }
