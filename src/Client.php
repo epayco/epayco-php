@@ -166,7 +166,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($lang, $e->getCode());
+            throw new ErrorException($e->getMessage(), $e->getCode());
         }
     }
 
