@@ -70,11 +70,19 @@ class Client extends GraphqlClient
               if(!is_object($json)) {
                   throw new ErrorException("Error get bearer_token.", 106);
               }
-              if(!$json->status)
-              {
-                  throw new ErrorException($json->message);
+              $bearer_token = false;
+              if(isset($json->bearer_token)) {
+                  $bearer_token=$json->bearer_token;
+              }else if(isset($json->token)){
+                $bearer_token= $json->token;
               }
-              $bearer_token=$json->bearer_token ?? $json->token;
+              if(!$bearer_token) {
+                  $msj = isset($json->message) ? $json->message : "Error get bearer_token";
+                  if($msj == "Error get bearer_token" && isset($json->error)){
+                      $msj = $json->error;
+                  }
+                  throw new ErrorException($msj, 422);
+              }
               $cookie_name = $api_key;
               $cookie_value = $bearer_token;
               setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
@@ -170,7 +178,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($lang, $e->getCode() );
+            throw new ErrorException($e->getMessage(), $e->getCode());
         }
     }
 
@@ -228,7 +236,7 @@ class Client extends GraphqlClient
             $headers["Authorization"] = "Basic ".$token;
             $data = [];
         }
-        $url = $apify ? Client::BASE_URL_AIFY. "/login" : Client::BASE_URL."/v1/auth/login";
+        $url = $apify ? Client::BASE_URL_APIFY. "/login" : Client::BASE_URL."/v1/auth/login";
         $response = \Requests::post($url, $headers, json_encode($data), $options);
 
         return isset($response->body) ? $response->body : false;
