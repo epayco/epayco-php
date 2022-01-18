@@ -12,8 +12,8 @@ class ErrorException extends EpaycoException
         $this->alternative = true;
         if($message == 'ES' || $message == 'EN'){
             $errors = json_decode(file_get_contents(EpaycoException::ERRORS_URL), true);    
-            if($errors[(string)$this->code]){
-                $newMessage = __CLASS__ . ": {$errors[(string)$this->code][$this->message]}\n";
+            if($errors[(string)$code]){
+                $newMessage = "{$errors[(string)$code][$message]}";
                 $this->alternative = false;
             }
         }
@@ -24,7 +24,7 @@ class ErrorException extends EpaycoException
     public function __toString()
     {
         if($this->alternative){
-            return __CLASS__. ": [{$this->code}] {$this->message}";
+            return "[{$this->code}] {$this->message}";
         }
         return $this->message;
     }
