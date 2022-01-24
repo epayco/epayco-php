@@ -240,12 +240,12 @@ class Client extends GraphqlClient
 
     protected function getEpaycoSecureBaseUrl($default)
     {
-        $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV_REST');
+        $epaycoEnv = getenv('SECURE_URL_SDK');
         $entorno = getenv('ENTORNO_SDK');
         if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
             return $default;
         } else if ($epaycoEnv) {
-            return "{$epaycoEnv}/{$entorno}";
+            return "{$epaycoEnv}{$entorno}";
         }
 
         return $default;

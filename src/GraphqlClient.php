@@ -384,7 +384,7 @@ class GraphqlClient
 
     protected function getEpaycoBaseUrl($default)
     {
-        $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV');
+        $epaycoEnv = getenv('BASE_URL_SDK');
         if($epaycoEnv){
             return $epaycoEnv;
         }
