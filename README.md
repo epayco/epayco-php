@@ -212,8 +212,10 @@ $sub = $epayco->subscriptions->charge(array(
 ### PSE
 
 #### Listar bancos
+
 ```php
-$bancos = $epayco->bank->pseBank();
+$test = true; // opcional, tiene que ser true o false o no enviarse
+$bancos = $epayco->bank->pseBank($test);
 //$bancos representa un object con toda la lista de bancos disponibles para transacciones con PSE
 ```
 
