@@ -432,3 +432,70 @@ $split_pay = $epayco->charge->create(array(
     	 ) //Campo obligatorio sí se envía split_rule
 ));
 ```
+
+### Daviplata
+
+#### Create
+
+```php
+$pay = $epayco->daviplata->create(array(
+    "doc_type" => "CC",
+    "document" => "1053814580414720",
+    "name" => "Testing",
+    "last_name" => "PAYCO",
+    "email" => "exmaple@epayco.co",
+    "ind_country" => "CO",
+    "phone" => "314853222200033",
+    "country" => "CO",
+    "city" => "bogota",
+    "address" => "Calle de prueba",
+    "ip" => "189.176.0.1",
+    "currency" => "COP",
+    "description" => "ejemplo de transaccion con daviplata",
+    "value" => "100",
+    "tax" => "0",
+    "tax_base" => "0",
+    "method_confirmation" => ""
+));
+```
+
+#### Confirm 
+
+```php
+$pay = $epayco->daviplata->confirm(array(
+    "ref_payco" => "45508846", // It is obtained from the create response
+    "id_session_token" => "45081749", // It is obtained from the create response
+    "otp" => "2580"
+));
+```
+
+### Safetypay
+
+#### Create 
+
+```php
+$sp = $epayco->safetypay->create(array(
+    "cash" => "1",
+    "end_date" => "2022-08-05",
+    "doc_type" => "CC",
+    "document" => "123456789",
+    "name" => "Jhon",
+    "last_name" => "doe",
+    "email" => "gerson.vasquez@epayco.com",
+    "ind_country" => "57",
+    "phone" => "3003003434",
+    "country" => "CO",
+    "invoice" => "fac-01",
+    "city" => "N/A",
+    "address" => "N/A",
+    "ip" => "192.168.100.100",
+    "currency" => "COP",
+    "description" => "Thu Jun 17 2021 11:37:01 GMT-0400 (hora de Venezuela)",
+    "value" => 100,
+    "tax" => 0,
+    "ico" => 0,
+    "tax_base" => 0,
+    "url_confirmation" => "",
+    "method_confirmation" => ""
+));
+```
