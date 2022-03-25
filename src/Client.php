@@ -124,7 +124,7 @@ class Client extends GraphqlClient
                 $response = Requests::get($_url, $headers, $options);
             } elseif ($method == "POST") {
                 if($apify){
-                    $response = Requests::post(Client::BASE_URL_APIFY . $url, $headers, json_encode($data), $options);
+                    $response = Requests::post($this->getEpaycoBaseApify(Client::BASE_URL_APIFY) . $url, $headers, json_encode($data), $options);
                 }
                 elseif ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
@@ -233,7 +233,7 @@ class Client extends GraphqlClient
             $headers["Authorization"] = "Basic ".$token;
             $data = [];
         }
-        $url = $apify ? Client::BASE_URL_APIFY. "/login" : $this->getEpaycoBaseUrl(Client::BASE_URL)."/v1/auth/login";
+        $url = $apify ? $this->getEpaycoBaseApify(Client::BASE_URL_APIFY). "/login" : $this->getEpaycoBaseUrl(Client::BASE_URL)."/v1/auth/login";
         $response = Requests::post($url, $headers, json_encode($data), $options);
 
         return isset($response->body) ? $response->body : false;
@@ -249,6 +249,15 @@ class Client extends GraphqlClient
             return getenv('EPAYCO_PHP_SDK_ENV_REST');
         }
 
+        return $default;
+    }
+
+    protected function getEpaycoBaseApify($default)
+    {
+        $epaycoEnv = getenv('BASE_URL_APIFY');
+        if($epaycoEnv){
+            return $epaycoEnv;
+        }
         return $default;
     }
 }
