@@ -6,6 +6,7 @@ namespace Epayco;
 use Epayco\Utils\PaycoAes;
 use Epayco\Util;
 use Epayco\Exceptions\ErrorException;
+use WpOrg\Requests\Requests;
 
 /**
  * Client conection api epayco graphql
@@ -101,7 +102,12 @@ class GraphqlClient
                 'query' => $query
             ];
 
-            $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . '/graphql', $headers, $body);
+            $options = array(
+                'timeout' => 120,
+                'connect_timeout' => 120,
+            );
+
+            $response = Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . '/graphql', $headers, $body, $options);
 
         } catch (\Throwable $th) {
             return $th->getMessage();
