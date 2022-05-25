@@ -54,7 +54,7 @@ class Client extends GraphqlClient
         /**
          * Switch traslate keys array petition in secure
          */
-        if($apify){
+        if($apify && is_array($data)){
             $data = $util->setKeys_apify($data);
         }else if ($switch && is_array($data)) {
             $data = $util->setKeys($data);
@@ -116,7 +116,9 @@ class Client extends GraphqlClient
             );
 
             if ($method == "GET") {
-                if ($switch) {
+                if($apify){
+                    $_url = Client::BASE_URL_APIFY . $url;
+                }elseif ($switch) {
                     $_url = Client::BASE_URL_SECURE . $url;
                 } else {
                     $_url = Client::BASE_URL . $url;
