@@ -16,7 +16,7 @@ class Cash extends Resource
      * @param  String $options data transaction
      * @return object
      */
-    public function create($type = null)
+    public function create($type = null, $options = null)
     {
 
         $methods_payment = $this->request(
@@ -35,11 +35,11 @@ class Cash extends Resource
         if(!isset($methods_payment->data) && !is_array($methods_payment->data)){
             throw new ErrorException($this->epayco->lang, 106);
         }
-        $options = array_map(function($item){
+        $entities = array_map(function($item){
             return strtolower($item->name);
         }, $methods_payment->data);
 
-        if(!in_array(strtolower($type),  $options)){
+        if(!in_array(strtolower($type),  $entities)){
             throw new ErrorException($this->epayco->lang, 109);
 
         }
