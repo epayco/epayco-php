@@ -18,40 +18,40 @@ class Cash extends Resource
      */
     public function create($type = null, $options = null)
     {
-        $url = null;
-        switch ($type) {
-            case "efecty":
-                $url = "/v2/efectivo/efecty";
-                break;
-            case "baloto":
-                $url = "/v2/efectivo/baloto";
-                break;
-            case "gana":
-                $url = "/v2/efectivo/gana";
-                break;
-            case 'redservi':
-                    $url = "/v2/efectivo/redservi";
-                break;
-            case 'puntored':
-                    $url = "/v2/efectivo/puntored";
-                   break;
-            case 'sured':
-                    $url = "/v2/efectivo/sured";
-                break;
-            case 'apostar':
-                    $url = "/v2/efectivo/apostar";
-                break;
-            case 'susuerte':
-                    $url = "/v2/efectivo/susuerte";
-                    break;
-            default:
-                throw new ErrorException($this->epayco->lang, 109);
-                break;
+        $medio = strtolower($type);
+        if($medio == "baloto"){
+            throw new ErrorException($this->epayco->lang, 109);
         }
+        
+        $methods_payment = $this->request(
+            "GET",
+            "/payment/cash/entities",
+            $api_key = $this->epayco->api_key,
+            null,
+            $private_key = $this->epayco->private_key,
+            $test = $this->epayco->test,
+            $switch = false,
+            $lang = $this->epayco->lang,
+            $cash = false,
+            false,
+            true
+        );
+        
+        if(!isset($methods_payment->data) || !is_array($methods_payment->data || count($methods_payment->data) == 0)){
+            throw new ErrorException($this->epayco->lang, 106);
+        }
+        $entities = array_map(function($item){
+            return strtolower(str_replace(" ","", $item->name));
+        }, $methods_payment->data);
+        
+        if(!in_array($medio,  $entities)){
+            throw new ErrorException($this->epayco->lang, 109);
+        }
+        
         return $this->request(
                 "POST",
-                $url,
-                $this->epayco->api_key,
+                "/v2/efectivo/{$medio}",
+                $api_key = $this->epayco->api_key,
                 $options,
                 $this->epayco->private_key,
                 $this->epayco->test,
