@@ -32,21 +32,24 @@ class Cash extends Resource
             false,
             true
         );
-        if(!isset($methods_payment->data) && !is_array($methods_payment->data)){
+        $medio = strtolower($type);
+        if($medio == "baloto"){
+            throw new ErrorException($this->epayco->lang, 109);
+        }
+        if(!isset($methods_payment->data) || !is_array($methods_payment->data || count($methods_payment->data) == 0)){
             throw new ErrorException($this->epayco->lang, 106);
         }
         $entities = array_map(function($item){
-            return strtolower($item->name);
+            return strtolower(str_replace(" ","", $item->name));
         }, $methods_payment->data);
-
-        if(!in_array(strtolower($type),  $entities)){
+        
+        if(!in_array($medio,  $entities)){
             throw new ErrorException($this->epayco->lang, 109);
-
         }
         
         return $this->request(
                 "POST",
-                "/restpagos/v2/efectivo/{$type}",
+                "/restpagos/v2/efectivo/{$medio}",
                 $api_key = $this->epayco->api_key,
                 $options,
                 $private_key = $this->epayco->private_key,
