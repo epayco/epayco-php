@@ -63,8 +63,9 @@ class Client extends GraphqlClient
             /**
              * Set heaToken bearer
              */
-         
-        if(!isset($_COOKIE[$api_key])) {
+            
+        $cookie_name = $api_key . ($apify ? "_apify" : "");
+        if(!isset($_COOKIE[$cookie_name])) {
             //  echo "Cookie named '" . $cookie_name . "' is not set!";
               $dataAuth =$this->authentication($api_key,$private_key, $apify);
               $json = json_decode($dataAuth);
@@ -84,14 +85,12 @@ class Client extends GraphqlClient
                   }
                   throw new ErrorException($msj, 422);
               }
-              $cookie_name = $api_key;
               $cookie_value = $bearer_token;
               setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
             //  echo "token con login".$bearer_token;
               }else{
-                $bearer_token = $_COOKIE[$api_key];
-             //   echo "token sin login".$bearer_token;
-              } 
+                $bearer_token = $_COOKIE[$cookie_name];
+            }
 
         } catch (\Exception $e) {
             $data = [
