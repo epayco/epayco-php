@@ -49,7 +49,7 @@ class Cash extends Resource
         
         return $this->request(
                 "POST",
-                "/restpagos/v2/efectivo/{$medio}",
+                "/v2/efectivo/{$medio}",
                 $api_key = $this->epayco->api_key,
                 $options,
                 $this->epayco->private_key,
