@@ -464,7 +464,14 @@ $pay = $epayco->daviplata->create(array(
     "value" => "100",
     "tax" => "0",
     "tax_base" => "0",
-    "method_confirmation" => ""
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```
 
@@ -504,7 +511,13 @@ $sp = $epayco->safetypay->create(array(
     "tax" => 0,
     "ico" => 0,
     "tax_base" => 0,
-    "url_confirmation" => "",
-    "method_confirmation" => ""
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```
