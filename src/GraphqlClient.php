@@ -103,11 +103,12 @@ class GraphqlClient
             ];
 
             $options = array(
-                'timeout' => 120,
-                'connect_timeout' => 120,
+                'timeout' => 180,
+                'connect_timeout' => 180,
             );
 
-            $response = \Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . '/graphql', $headers, $body, $options);
+
+            $response = Requests::post(Client::BASE_URL . '/graphql', $headers, $body);
 
         } catch (\Throwable $th) {
             return $th->getMessage();
