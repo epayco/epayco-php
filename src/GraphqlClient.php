@@ -102,6 +102,12 @@ class GraphqlClient
                 'query' => $query
             ];
 
+            $options = array(
+                'timeout' => 180,
+                'connect_timeout' => 180,
+            );
+
+
             $response = Requests::post(Client::BASE_URL . '/graphql', $headers, $body);
 
         } catch (\Throwable $th) {
