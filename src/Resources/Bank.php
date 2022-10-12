@@ -17,7 +17,7 @@ class Bank extends Resource
     {
         $url = "/restpagos/pse/bancos.json?public_key=" . $this->epayco->api_key;
         if(isset($testMode) && gettype($testMode) === "boolean"){
-            $test = $testMode  ? "1" : "2";     
+            $test = $testMode  ? "TRUE" : "FALSE";     
             $url = $url."&test=".$test;
         }
         return $this->request(
