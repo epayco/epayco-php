@@ -6,7 +6,7 @@ namespace Epayco;
 use Epayco\Utils\PaycoAes;
 use Epayco\Util;
 use Epayco\Exceptions\ErrorException;
-#use WpOrg\Requests\Requests;
+use WpOrg\Requests\Requests;
 
 /**
  * Client conection api epayco graphql
