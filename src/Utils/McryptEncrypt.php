@@ -27,30 +27,14 @@ class McryptEncrypt
 
     public function encrypt($data)
     {
-        $encriptData = "";
-        if(is_array($data)){
-            if(isset($data['extra5'])){
-                $encript= \mcrypt_encrypt(
-                    $this->_cipher,
-                    $this->_key,
-                    $this->addpadPKCS7($data['extra5'], $this->_initializationVectorSize),
-                    $this->_mode,
-                    $this->iv
-                );
-                $encriptData =  ["extra5"=>base64_encode($encript)];
-            }
-        }else{
-            $encript= \mcrypt_encrypt(
-                $this->_cipher,
-                $this->_key,
-                $this->addpadPKCS7($data, $this->_initializationVectorSize),
-                $this->_mode,
-                $this->iv
-            );
-            $encriptData = base64_encode($encript);
-        }
-
-        return $encriptData;
+        $encript= \mcrypt_encrypt(
+            $this->_cipher,
+            $this->_key,
+            $this->addpadPKCS7($data, $this->_initializationVectorSize),
+            $this->_mode,
+            $this->iv
+        );
+        return base64_encode($encript);
     }
 
     public function decrypt($encryptedData)
