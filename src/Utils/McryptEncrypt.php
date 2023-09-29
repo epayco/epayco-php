@@ -65,7 +65,11 @@ class McryptEncrypt
     {
         $aux = array();
         foreach ($arrdata as $key => $value) {
-            $aux[$key] = $this->encrypt($value);
+            if (is_array($value)) {
+                $aux[$key] = $this->encryptArray($value);
+            } else {
+                $aux[$key] = $this->encrypt($value);
+            }
         }
         return $aux;
     }
