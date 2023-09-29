@@ -212,8 +212,10 @@ $sub = $epayco->subscriptions->charge(array(
 ### PSE
 
 #### Listar bancos
+
 ```php
-$bancos = $epayco->bank->pseBank();
+$test = true; // opcional, tiene que ser true o false o no enviarse
+$bancos = $epayco->bank->pseBank($test);
 //$bancos representa un object con toda la lista de bancos disponibles para transacciones con PSE
 ```
 
@@ -235,6 +237,7 @@ $pse = $epayco->bank->create(array(
         "last_name" => "PAYCO",
         "email" => "no-responder@payco.co",
         "country" => "CO",
+        "city" => "Bogota",
         "cell_phone" => "3010000001",
         "ip" => "190.000.000.000",  // This is the client's IP, it is required
         "url_response" => "https://ejemplo.com/respuesta.html",
@@ -267,7 +270,7 @@ https://docs.epayco.co/tools/split-payment
 #### Split payment
 use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->bank->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
@@ -302,11 +305,13 @@ $cash = $epayco->cash->create("efecty", array(
     "last_name" => "PAYCO",
     "email" => "test@mailinator.com",
     "cell_phone" => "3010000001",
+    "country" => "CO",
+    "city" => "Bogota",
     "end_date" => "data_max_5_days", // yy-mm-dd
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://ejemplo.com/respuesta.html",
     "url_confirmation" => "https://ejemplo.com/confirmacion",
-    "method_confirmation" => "GET",
+    "metodoconfirmacion" => "GET",
 
     //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
     "extra1" => "",
@@ -347,7 +352,7 @@ https://docs.epayco.co/tools/split-payment
 
 use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->cash->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
@@ -369,6 +374,8 @@ $split_pay = $epayco->charge->create(array(
 
 ```php
 $pay = $epayco->charge->create(array(
+
+    //required 
     "token_card" => $token->id,
     "customer_id" => $customer->data->customerId,
     "doc_type" => "CC",
@@ -376,27 +383,31 @@ $pay = $epayco->charge->create(array(
     "name" => "John",
     "last_name" => "Doe",
     "email" => "example@email.com",
+    "value" => "116000",
+    "currency" => "COP",
+
+    // optional
     "bill" => "OR-1234",
     "description" => "Test Payment",
-    "value" => "116000",
     "tax" => "16000",
     "tax_base" => "100000",
-    "currency" => "COP",
     "dues" => "12",
     "address" => "cr 44 55 66",
+    "city" => "Medellín",
+    "country" => "CO",
     "phone"=> "2550102",
     "cell_phone"=> "3010000001",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
-    "url_confirmation" => "https://tudominio.com/confirmacion.php",
-    
+    "url_confirmation" => "https://tudominio.com/confirmacion.php",\
+    "method_confirmation" => "GET".
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
     //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
-        "extra1" => "data 1",
-        "extra2" => "data 2",
-        "extra3" => "data 3",
-        "extra4" => "data 4",
-        "extra5" => "data 5"
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```
 
@@ -424,9 +435,89 @@ $split_pay = $epayco->charge->create(array(
     "split_primary_receiver" => "P_CUST_ID_CLIENTE APPLICATION",
     "split_primary_receiver_fee"=>"0",
     "split_rule"=>'multiple', // sí se envía este parámetro el campo split_receivers se vuelve obligatorio
-    "split_receivers" => json_encode(array(
+    "split_receivers" => array(
     		array('id'=>'P_CUST_ID_CLIENTE 1 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10'),
     		array('id'=>'P_CUST_ID_CLIENTE 2 RECEIVER','total'=>'58000','iva'=>'8000','base_iva'=>'50000','fee' => '10')
-    	 )) //Campo obligatorio sí se envía split_rule
+    	 ) //Campo obligatorio sí se envía split_rule
+));
+```
+
+### Daviplata
+
+#### Create
+
+```php
+$pay = $epayco->daviplata->create(array(
+    "doc_type" => "CC",
+    "document" => "1053814580414720",
+    "name" => "Testing",
+    "last_name" => "PAYCO",
+    "email" => "exmaple@epayco.co",
+    "ind_country" => "CO",
+    "phone" => "314853222200033",
+    "country" => "CO",
+    "city" => "bogota",
+    "address" => "Calle de prueba",
+    "ip" => "189.176.0.1",
+    "currency" => "COP",
+    "description" => "ejemplo de transaccion con daviplata",
+    "value" => "100",
+    "tax" => "0",
+    "tax_base" => "0",
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
+));
+```
+
+#### Confirm 
+
+```php
+$pay = $epayco->daviplata->confirm(array(
+    "ref_payco" => "45508846", // It is obtained from the create response
+    "id_session_token" => "45081749", // It is obtained from the create response
+    "otp" => "2580"
+));
+```
+
+### Safetypay
+
+#### Create 
+
+```php
+$sp = $epayco->safetypay->create(array(
+    "cash" => "1",
+    "end_date" => "2022-08-05",
+    "doc_type" => "CC",
+    "document" => "123456789",
+    "name" => "Jhon",
+    "last_name" => "doe",
+    "email" => "gerson.vasquez@epayco.com",
+    "ind_country" => "57",
+    "phone" => "3003003434",
+    "country" => "CO",
+    "invoice" => "fac-01",
+    "city" => "N/A",
+    "address" => "N/A",
+    "ip" => "192.168.100.100",
+    "currency" => "COP",
+    "description" => "Thu Jun 17 2021 11:37:01 GMT-0400 (hora de Venezuela)",
+    "value" => 100,
+    "tax" => 0,
+    "ico" => 0,
+    "tax_base" => 0,
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```

@@ -37,7 +37,7 @@ class Customers extends Resource
     {
         return $this->request(
                "GET",
-               "/payment/v1/customer/" . $this->epayco->api_key . "/" . $uid . "/",
+               "/payment/v1/customer/" . $this->epayco->api_key . "/" . $uid,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
@@ -55,7 +55,7 @@ class Customers extends Resource
     {
         return $this->request(
                "GET",
-               "/payment/v1/customers/" . $this->epayco->api_key . "/",
+               "/payment/v1/customers/" . $this->epayco->api_key,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
@@ -118,7 +118,6 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang,
                $cash = false,
-               $safetyp = false,
                $card = true
         );
     }
@@ -139,7 +138,6 @@ class Customers extends Resource
                $switch = false,
                $lang = $this->epayco->lang,
                $cash = false,
-               $safetyp = false,
                $card = true
         );
     }

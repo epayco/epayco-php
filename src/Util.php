@@ -21,6 +21,7 @@ class Util
         return $aux;
     }
 
+
     public function setKeys_apify($array)
     {
         $aux = array();
@@ -35,6 +36,7 @@ class Util
         }
         return $aux;
     }
+
 
     public function mergeSet($data, $test, $lang, $private_key, $api_key, $cash)
     {
