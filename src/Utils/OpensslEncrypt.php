@@ -17,27 +17,13 @@ class OpensslEncrypt
     }
 
     public function encrypt($data){
-        $encriptData = "";
-        if(is_array($data)){
-            if(isset($data['extra5'])){
-                $ciphertext = openssl_encrypt(
-                    $data['extra5']
-                    , $this->cipher
-                    , $this->key
-                    , OPENSSL_RAW_DATA
-                    , $this->iv);
-                $encriptData =  ["extra5"=>\base64_encode($ciphertext)];
-            }
-        }else{
-            $ciphertext = openssl_encrypt(
-                $data
-                , $this->cipher
-                , $this->key
-                , OPENSSL_RAW_DATA
-                , $this->iv);
-            $encriptData = \base64_encode($ciphertext);
-        }
-        return $encriptData;
+        $ciphertext = openssl_encrypt(
+            $data
+            , $this->cipher
+            , $this->key
+            , OPENSSL_RAW_DATA
+            , $this->iv);
+        return \base64_encode($ciphertext);
     }
 
     public function decrypt($data){
@@ -64,7 +50,11 @@ class OpensslEncrypt
     public function encryptArray($arrdata){
         $aux = array();
         foreach ($arrdata as $key => $value) {
-            $aux[$key] = $this->encrypt($value);
+            if (is_array($value)) {
+                $aux[$key] = $this->encryptArray($value);
+            } else {
+                $aux[$key] = $this->encrypt($value);
+            }
         }
         return $aux;
     }
