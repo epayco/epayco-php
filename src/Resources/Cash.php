@@ -30,19 +30,20 @@ class Cash extends Resource
                 $url = "/restpagos/v2/efectivo/gana";
                 break;
             case 'redservi':
-                    $url = "/restpagos/v2/efectivo/redservi";
+                $url = "/restpagos/v2/efectivo/redservi";
                 break;
             case 'puntored':
-                    $url = "/restpagos/v2/efectivo/puntored";
-                   break;
+                $url = "/restpagos/v2/efectivo/puntored";
+                break;
             case 'sured':
-                    $url = "/restpagos/v2/efectivo/sured";
+                $url = "/restpagos/v2/efectivo/sured";
                 break;
             case 'apostar':
-                    $url = "/restpagos/v2/efectivo/apostar";
+                $url = "/restpagos/v2/efectivo/apostar";
                 break;
             case 'susuerte':
-                    $url = "/restpagos/v2/efectivo/susuerte";
+                $url = "/restpagos/v2/efectivo/susuerte";
+                break;
             default:
                 throw new ErrorException($this->epayco->lang, 109);
                 break;

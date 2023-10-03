@@ -13,15 +13,20 @@ class Bank extends Resource
      * Return list all banks
      * @return object
      */
-    public function pseBank()
+    public function pseBank($testMode = null)
     {
+        $url = "/restpagos/pse/bancos.json?public_key=" . $this->epayco->api_key;
+        if(isset($testMode) && gettype($testMode) === "boolean"){
+            $test = $testMode  ? "1" : "2";     
+            $url = $url."&test=".$test;
+        }
         return $this->request(
                "GET",
-               "/restpagos/pse/bancos.json?public_key=" . $this->epayco->api_key,
+               $url,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
-               $test = $this->epayco->test,
+               $this->epayco->test,
                $switch = true,
                $lang = $this->epayco->lang
         );
