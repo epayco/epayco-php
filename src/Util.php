@@ -38,6 +38,7 @@ class Util
     }
 
 
+
     public function mergeSet($data, $test, $lang, $private_key, $api_key, $cash)
     {
         $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
