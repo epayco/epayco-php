@@ -237,6 +237,7 @@ $pse = $epayco->bank->create(array(
         "last_name" => "PAYCO",
         "email" => "no-responder@payco.co",
         "country" => "CO",
+        "city" => "Bogota",
         "cell_phone" => "3010000001",
         "ip" => "190.000.000.000",  // This is the client's IP, it is required
         "url_response" => "https://ejemplo.com/respuesta.html",
@@ -269,7 +270,7 @@ https://docs.epayco.co/tools/split-payment
 #### Split payment
 use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->bank->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
@@ -304,6 +305,8 @@ $cash = $epayco->cash->create("efecty", array(
     "last_name" => "PAYCO",
     "email" => "test@mailinator.com",
     "cell_phone" => "3010000001",
+    "country" => "CO",
+    "city" => "Bogota",
     "end_date" => "data_max_5_days", // yy-mm-dd
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://ejemplo.com/respuesta.html",
@@ -349,7 +352,7 @@ https://docs.epayco.co/tools/split-payment
 
 use the following attributes in case you need to do a dispersion with one or multiple providers
 ```php
-$split_pay = $epayco->charge->create(array(
+$split_pay = $epayco->cash->create(array(
     //Other customary parameters...
     "splitpayment" => "true",
     "split_app_id" => "P_CUST_ID_CLIENTE APPLICATION",
@@ -371,6 +374,8 @@ $split_pay = $epayco->charge->create(array(
 
 ```php
 $pay = $epayco->charge->create(array(
+
+    //required 
     "token_card" => $token->id,
     "customer_id" => $customer->data->customerId,
     "doc_type" => "CC",
@@ -378,28 +383,31 @@ $pay = $epayco->charge->create(array(
     "name" => "John",
     "last_name" => "Doe",
     "email" => "example@email.com",
+    "value" => "116000",
+    "currency" => "COP",
+
+    // optional
     "bill" => "OR-1234",
     "description" => "Test Payment",
-    "value" => "116000",
     "tax" => "16000",
     "tax_base" => "100000",
-    "currency" => "COP",
     "dues" => "12",
     "address" => "cr 44 55 66",
+    "city" => "Medellín",
+    "country" => "CO",
     "phone"=> "2550102",
     "cell_phone"=> "3010000001",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
     "url_confirmation" => "https://tudominio.com/confirmacion.php",\
-    "method_confirmation" => "Get"
-    
+    "method_confirmation" => "GET".
     "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
     //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
-        "extra1" => "data 1",
-        "extra2" => "data 2",
-        "extra3" => "data 3",
-        "extra4" => "data 4",
-        "extra5" => "data 5"
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```
 
@@ -456,7 +464,14 @@ $pay = $epayco->daviplata->create(array(
     "value" => "100",
     "tax" => "0",
     "tax_base" => "0",
-    "method_confirmation" => ""
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```
 
@@ -496,7 +511,13 @@ $sp = $epayco->safetypay->create(array(
     "tax" => 0,
     "ico" => 0,
     "tax_base" => 0,
-    "url_confirmation" => "",
-    "method_confirmation" => ""
+    "method_confirmation" => "POST",
+    "url_confirmation" => "https://tudominio.com/respuesta.php",
+    "url_response" => "https://tudominio.com/respuesta.php",
+    "extra1" => "data 1",
+    "extra2" => "data 2",
+    "extra3" => "data 3",
+    "extra4" => "data 4",
+    "extra5" => "data 5"
 ));
 ```

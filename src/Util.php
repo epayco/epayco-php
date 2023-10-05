@@ -21,6 +21,7 @@ class Util
         return $aux;
     }
 
+
     public function setKeys_apify($array)
     {
         $aux = array();
@@ -36,10 +37,12 @@ class Util
         return $aux;
     }
 
-        public function mergeSet($data, $test, $lang, $private_key, $api_key, $cash)
-        {
-            $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
-            $data["test"] = $test;
+
+
+    public function mergeSet($data, $test, $lang, $private_key, $api_key, $cash)
+    {
+        $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
+        $data["test"] = $test;
 
         /**
          * Init AES

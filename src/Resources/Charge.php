@@ -39,7 +39,7 @@ class Charge extends Resource
     {
         return $this->request(
                 "GET",
-                "/restpagos/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
+                "/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
                 $api_key = $this->epayco->api_key,
                 $uid,
                 $private_key = $this->epayco->private_key,
@@ -54,7 +54,7 @@ class Charge extends Resource
      * @param integer $permission
      * @return object
      */
-    public function revert($options = null,$permission)
+    public function revert($options = null,$permission = "")
     {
         $options["enabled_key"] = $permission;
 
