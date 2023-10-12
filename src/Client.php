@@ -6,6 +6,7 @@ namespace Epayco;
 use Epayco\Utils\PaycoAes;
 use Epayco\Util;
 use Epayco\Exceptions\ErrorException;
+use WpOrg\Requests\Requests;
 
 /**
  * Client conection api epayco
@@ -14,7 +15,8 @@ class Client extends GraphqlClient
 {
 
     const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
+    const BASE_URL_SECURE = "https://secure.payco.co/restpagos";
+    const BASE_URL_APIFY = "https://apify.epayco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -33,14 +35,14 @@ class Client extends GraphqlClient
         $method,
         $url,
         $api_key,
-        $data = null,
+        $data,
         $private_key,
         $test,
         $switch,
         $lang,
         $cash = null,
-        $safetyp = null,
-        $card = null
+        $card = null,
+        $apify = false
     )
     {
 
@@ -54,46 +56,50 @@ class Client extends GraphqlClient
         /**
          * Switch traslate keys array petition in secure
          */
-        if ($switch && is_array($data)) {
-            if ($safetyp) {
-                $data = $util->setKeys($data, $safetyp);
-            } else {
-                $data = $util->setKeys($data);
-            }
+        if($apify && is_array($data)){
+            $data = $util->setKeys_apify($data);
+        }else if ($switch && is_array($data)) {
+            $data = $util->setKeys($data);
         }
         try {
             /**
              * Set heaToken bearer
              */
-         
-        if(!isset($_COOKIE[$api_key])) {
+            
+        $cookie_name = $api_key . ($apify ? "_apify" : "");
+        if(!isset($_COOKIE[$cookie_name])) {
             //  echo "Cookie named '" . $cookie_name . "' is not set!";
-              $dataAuth =$this->authentication($api_key,$private_key);
-              $auth=gettype($dataAuth);
+              $dataAuth =$this->authentication($api_key,$private_key, $apify);
               $json = json_decode($dataAuth);
               if(!is_object($json)) {
                   throw new ErrorException("Error get bearer_token.", 106);
               }
-              if(!$json->status)
-              {
-                  throw new ErrorException($json->message);
+              $bearer_token = false;
+              if(isset($json->bearer_token)) {
+                  $bearer_token=$json->bearer_token;
+              }else if(isset($json->token)){
+                $bearer_token= $json->token;
               }
-              $bearer_token=$json->bearer_token;
-              $cookie_name = $api_key;
+              if(!$bearer_token) {
+                  $msj = isset($json->message) ? $json->message : "Error get bearer_token";
+                  if($msj == "Error get bearer_token" && isset($json->error)){
+                      $msj = $json->error;
+                  }
+                  throw new ErrorException($msj, 422);
+              }
               $cookie_value = $bearer_token;
               setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
             //  echo "token con login".$bearer_token;
               }else{
-                $bearer_token = $_COOKIE[$api_key];
-             //   echo "token sin login".$bearer_token;
-              } 
+                $bearer_token = $_COOKIE[$cookie_name];
+            }
 
         } catch (\Exception $e) {
-            $data = [
+            $data = array(
                 "status" => false,
                 "message" => $e->getMessage(),
-                "data" => []
-            ];
+                "data" => array()
+            );
             $objectReturnError = (object)$data;
             return $objectReturnError;
         }
@@ -111,45 +117,34 @@ class Client extends GraphqlClient
             );
 
             if ($method == "GET") {
-                if ($switch) {
-                    if ($test) {
-                        $test = "TRUE";
-                    } else {
-                        $test = "FALSE";
-                    }
-
-                    $response = \Requests::get(Client::BASE_URL_SECURE . $url, $headers, $options);
+                if($apify){
+                    $_url = $this->getEpaycoBaseApify( Client::BASE_URL_APIFY) . $url;
+                }elseif ($switch) {
+                    $_url = $this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url;
                 } else {
-                    $response = \Requests::get(Client::BASE_URL . $url, $headers, $options);
+                    $_url = $this->getEpaycoBaseUrl(Client::BASE_URL) . $url;
                 }
-            } elseif ($method == "POST") {
 
-                if ($switch) {
+                $response = Requests::get($_url, $headers, $options);
+            } elseif ($method == "POST") {
+                if($apify){
+                    $response = Requests::post($this->getEpaycoBaseApify(Client::BASE_URL_APIFY) . $url, $headers, json_encode($data), $options);
+                }
+                elseif ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
 
-                    $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers, json_encode($data), $options);
+                    $response = Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, json_encode($data), $options);
                 } else {
 
-                    if ($card) {
-
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
-                    } else {
-
+                    if (!$card) {
                         $data["ip"] = isset($data["ip"]) ? $data["ip"] : getHostByName(getHostName());
                         $data["test"] = $test;
-
-                        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
                     }
-
-                }
-                if ($safetyp) {
-                    $headers2 = array("Accept" => "multipart/form-data");
-                    $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
-                    $response = \Requests::post(Client::BASE_URL_SECURE . $url, $headers2, $data, $options);
+                    $response = Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
 
                 }
             } elseif ($method == "DELETE") {
-                $response = \Requests::delete(Client::BASE_URL . $url, $headers, $options);
+                $response = Requests::delete($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
             }
         } catch (\Exception $e) {
             throw new ErrorException($e->getMessage(), $e->getCode());
@@ -162,16 +157,13 @@ class Client extends GraphqlClient
                 return json_decode($response->body);
             }
             if ($response->status_code == 400) {
-                $code = 0;
-                $message = "Bad request";
                 try {
                     $error = (array)json_decode($response->body)->errors[0];
-                    $code = key($error);
                     $message = current($error);
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
-                throw new ErrorException($message , 103);
+                throw new ErrorException($message, 103);
             }
             if ($response->status_code == 401) {
                 throw new ErrorException('Unauthorized', 104);
@@ -187,7 +179,7 @@ class Client extends GraphqlClient
             }
             throw new ErrorException('Internal error', 102);
         } catch (\Exception $e) {
-            throw new ErrorException($lang, $e->getCode() );
+            throw new ErrorException($e->getMessage(), $e->getCode());
         }
     }
 
@@ -227,7 +219,7 @@ class Client extends GraphqlClient
 
     }
 
-    public function authentication($api_key, $private_key)
+    public function authentication($api_key, $private_key, $apify)
     {   
         $data = array(
             'public_key' => $api_key,
@@ -240,10 +232,36 @@ class Client extends GraphqlClient
             'connect_timeout' => 120,
         );
 
-        $url = "/v1/auth/login";
-        $response = \Requests::post(Client::BASE_URL . $url, $headers, json_encode($data), $options);
+        if($apify){
+            $token = base64_encode($api_key.":".$private_key);
+            $headers["Authorization"] = "Basic ".$token;
+            $data = [];
+        }
+        $url = $apify ? $this->getEpaycoBaseApify(Client::BASE_URL_APIFY). "/login" : $this->getEpaycoBaseUrl(Client::BASE_URL)."/v1/auth/login";
+        $response = Requests::post($url, $headers, json_encode($data), $options);
 
         return isset($response->body) ? $response->body : false;
     }
-}
 
+    protected function getEpaycoSecureBaseUrl($default)
+    {
+        $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV_REST');
+
+        if (false === $epaycoEnv || 'prod' === $epaycoEnv) {
+            return $default;
+        } else if ($epaycoEnv) {
+            return getenv('EPAYCO_PHP_SDK_ENV_REST');
+        }
+
+        return $default;
+    }
+
+    protected function getEpaycoBaseApify($default)
+    {
+        $epaycoEnv = getenv('BASE_URL_APIFY');
+        if($epaycoEnv){
+            return $epaycoEnv;
+        }
+        return $default;
+    }
+}

@@ -37,7 +37,7 @@ class Plan extends Resource
     {
         return $this->request(
                "GET",
-               "/recurring/v1/plan/" . $this->epayco->api_key . "/" . $uid . "/",
+               "/recurring/v1/plan/" . $this->epayco->api_key . "/" . $uid,
                $api_key = $this->epayco->api_key,
                $options = null,
                $private_key = $this->epayco->private_key,
