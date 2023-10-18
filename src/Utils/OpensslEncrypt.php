@@ -18,11 +18,11 @@ class OpensslEncrypt
 
     public function encrypt($data){
         $ciphertext = openssl_encrypt(
-                $data
-              , $this->cipher
-              , $this->key
-              , OPENSSL_RAW_DATA
-              , $this->iv);
+            $data
+            , $this->cipher
+            , $this->key
+            , OPENSSL_RAW_DATA
+            , $this->iv);
         return \base64_encode($ciphertext);
     }
 
