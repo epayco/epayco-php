@@ -51,8 +51,7 @@ class Client extends GraphqlClient
          */
         $util = new Util();
         if(!isset($data['extras_epayco'])){
-            $data['extras_epayco'] = array();
-            $data['extras_epayco'] = ["extra5" => "P42"];
+            $data['extras_epayco']["extra5"] = "P42";
         }
         /**
          * Switch traslate keys array petition in secure
