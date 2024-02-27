@@ -40,10 +40,10 @@ class Client extends GraphqlClient
         $test,
         $switch,
         $lang,
-        $cash = null,
-        $card = null,
-        $apify = false
-    )
+        $cash = null, // Assuming $cash is optional
+        $card = null, // Assuming $card is optional
+        $apify = false // Assuming $apify is optional and defaulting to false
+    ) 
     {
 
         /**

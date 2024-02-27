@@ -54,10 +54,13 @@ class Charge extends Resource
      * @param integer $permission
      * @return object
      */
-    public function revert($options = null,$permission = "")
+    public function revert($permission = "", $options = null)
     {
+        if ($options === null) {
+            $options = [];
+        }
         $options["enabled_key"] = $permission;
-
+    
         return $this->request(
             "POST",
             "/payment/v1/revert/discount/create",
@@ -69,4 +72,5 @@ class Charge extends Resource
             $lang = $this->epayco->lang
         );
     }
+    
 }
