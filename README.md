@@ -375,7 +375,6 @@ $split_pay = $epayco->cash->create(array(
 
 ```php
 $pay = $epayco->charge->create(array(
-
     //required 
     "token_card" => $token->id,
     "customer_id" => $customer->data->customerId,
@@ -386,7 +385,6 @@ $pay = $epayco->charge->create(array(
     "email" => "example@email.com",
     "value" => "116000",
     "currency" => "COP",
-
     // optional
     "bill" => "OR-1234",
     "description" => "Test Payment",
@@ -400,15 +398,17 @@ $pay = $epayco->charge->create(array(
     "cell_phone"=> "3010000001",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
-    "url_confirmation" => "https://tudominio.com/confirmacion.php",\
-    "method_confirmation" => "GET".
-    "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
-    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
+    "url_confirmation" => "https://tudominio.com/confirmacion.php",
+    "method_confirmation" => "GET",
+    "use_default_card_customer" => true,  // if the user wants to be charged with the card that the customer currently has as default = true
+    // Los parámetros "extras" deben ser enviados como cadenas de texto (string). Aunque se agrupen dentro de un array, cada parámetro individual debe ser un string. Si se envían como otro tipo de datos, como arrays anidados, se generará un error.
+	 "extras"=> array(
     "extra1" => "data 1",
     "extra2" => "data 2",
     "extra3" => "data 3",
     "extra4" => "data 4",
     "extra5" => "data 5"
+    )
 ));
 ```
 
