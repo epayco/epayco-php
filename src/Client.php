@@ -35,11 +35,11 @@ class Client extends GraphqlClient
         $method,
         $url,
         $api_key,
-        $data,
         $private_key,
         $test,
         $switch,
         $lang,
+        $data,
         $cash = null,
         $card = null,
         $apify = false
