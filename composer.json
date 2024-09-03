@@ -1,5 +1,5 @@
 {
-    "name": "epayco/epayco-php",
+    "name": "neoacevedo/epayco-php",
     "type": "sdk",
     "description": "Epayco API client for PHP",
     "keywords": ["epayco", "api"],
