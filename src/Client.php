@@ -50,7 +50,8 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if(!isset($data['extras_epayco'])){
+        if(!is_null($data) && is_array($data) && !isset($data['extras_epayco'])){
+            $data['extras_epayco']= array();
             $data['extras_epayco'] = ["extra5" => "P42"];
         }
 
