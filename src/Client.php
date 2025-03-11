@@ -7,6 +7,8 @@ use Epayco\Utils\PaycoAes;
 use Epayco\Util;
 use Epayco\Exceptions\ErrorException;
 use WpOrg\Requests\Requests;
+use GuzzleHttp\Client as ClientHttp;
+use GuzzleHttp\Psr7\Request as RequestHttp;
 
 /**
  * Client conection api epayco
@@ -14,9 +16,9 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
-    const BASE_URL_APIFY = "https://apify.epayco.co";
+    const BASE_URL = "https://api.secure.epayco.io";
+    const BASE_URL_SECURE = "https://secure2.epayco.io/restpagos";
+    const BASE_URL_APIFY = "https://apify.epayco.io";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -50,9 +52,7 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if(!isset($data['extras_epayco'])){
-            $data['extras_epayco'] = ["extra5" => "P42"];
-        }
+
         /**
          * Switch traslate keys array petition in secure
          */
@@ -125,8 +125,20 @@ class Client extends GraphqlClient
                     $_url = $this->getEpaycoBaseUrl(Client::BASE_URL) . $url;
                 }
 
-                $response = Requests::get($_url, $headers, $options);
+                /*$response = Requests::get($_url, $headers, $options);
+                $statusCOde = $response->status_code;
+                $bodyResult = $response->body;*/
+                $client = new ClientHttp();
+                $epaycoData = $data ?? [];
+                $request = new RequestHttp('GET', $_url, $headers, json_encode($epaycoData));
+                $response = $client->sendAsync($request)->wait();
+                $statusCOde = $response->getStatusCode();
+                $bodyResult = $response->getBody();
             } elseif ($method == "POST") {
+                if(!is_null($data) && is_array($data) && !isset($data['extras_epayco'])){
+                    $data['extras_epayco']= array();
+                    $data['extras_epayco'] = ["extra5" => "P42"];
+                }
                 if($apify){
                     $response = Requests::post($this->getEpaycoBaseApify(Client::BASE_URL_APIFY) . $url, $headers, json_encode($data), $options);
                 }
@@ -143,38 +155,42 @@ class Client extends GraphqlClient
                     $response = Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
 
                 }
+                $statusCOde = $response->status_code;
+                $bodyResult = $response->body;
             } elseif ($method == "DELETE") {
                 $response = Requests::delete($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
+                $statusCOde = $response->status_code;
+                $bodyResult = $response->body;
             }
         } catch (\Exception $e) {
             throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
-            if ($response->status_code >= 200 && $response->status_code <= 206) {
+            if ($statusCOde >= 200 && $statusCOde <= 206) {
                 if ($method == "DELETE") {
-                    return $response->status_code == 204 || $response->status_code == 200;
+                    return $statusCOde == 204 || $statusCOde == 200;
                 }
-                return json_decode($response->body);
+                return json_decode($bodyResult);
             }
-            if ($response->status_code == 400) {
+            if ($statusCOde == 400) {
                 try {
-                    $error = (array)json_decode($response->body)->errors[0];
+                    $error = (array)json_decode($bodyResult)->errors[0];
                     $message = current($error);
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
                 throw new ErrorException($message, 103);
             }
-            if ($response->status_code == 401) {
+            if ($statusCOde == 401) {
                 throw new ErrorException('Unauthorized', 104);
             }
-            if ($response->status_code == 404) {
+            if ($statusCOde == 404) {
                 throw new ErrorException('Not found', 105);
             }
-            if ($response->status_code == 403) {
+            if ($statusCOde == 403) {
                 throw new ErrorException('Permission denegated', 106);
             }
-            if ($response->status_code == 405) {
+            if ($statusCOde == 405) {
                 throw new ErrorException('Not allowed', 107);
             }
             throw new ErrorException('Internal error', 102);
