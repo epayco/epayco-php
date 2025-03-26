@@ -49,7 +49,8 @@ $token = $epayco->token->create(array(
     "card[number]" => '4575623182290326',
     "card[exp_year]" => "2017",
     "card[exp_month]" => "07",
-    "card[cvc]" => "123"
+    "card[cvc]" => "123",
+    "hasCvv" => true //hasCvv: validar codigo de seguridad en la transacción
 ));
 ```
 
@@ -81,7 +82,10 @@ $customer = $epayco->customer->get("id_client");
 #### List
 
 ```php
-$customer = $epayco->customer->getList();
+$customer = $epayco->customer->getList([
+    "page"=>6,
+    "perPage"=>10
+]);
 ```
 
 #### Update
@@ -136,7 +140,20 @@ $plan = $epayco->plan->create(array(
      "currency" => "cop",
      "interval" => "month",
      "interval_count" => 1,
-     "trial_days" => 30
+     "trial_days" => 30,
+     "ip" => "127.0.0.1",
+     "iva" => 5700,
+     "ico" => 0,
+     "planLink" => "https://github.com/epayco",
+     "greetMessage" => "discounted react and redux course",
+     "linkExpirationDate" => "2025-03-11",
+     "subscriptionLimit"=> 10, #Subscription limit between 0 and 10000
+      "imgUrl"=>"https://epayco.com/wp-content/uploads/2023/04/logo-blanco.svg",
+      "discountValue"=>5000, #discount value
+      "discountPercentage"=>19, #discount percentage
+      "transactionalLimit"=> 2, #transactional Limit
+      "additionalChargePercentage"=>0.0, #Additional charge percentage limit
+      "firstPaymentAdditionalCost"=>45700  #Installation Cost
 ));
 ```
 
@@ -150,6 +167,26 @@ $plan = $epayco->plan->get("coursereact");
 
 ```php
 $plan = $epayco->plan->getList();
+```
+
+#### Upadte
+
+```php
+$plan = $epayco->plan->update("coursereact",array(
+        "name" => "Course react js",
+        "description" => "Course react and redux",
+        "amount" => 35700,
+        "currency" => "cop",
+        "interval" => "month",
+        "interval_count" => 1,
+        "trial_days" => 30,
+        "ip"=> "127.0.0.1",
+        "iva" => 1900,
+        "ico" => 0,
+        "transactionalLimit"=> 3,
+        "additionalChargePercentage"=>0.0,
+        "afterPayment"=>"message after paying"
+));
 ```
 
 #### Remove

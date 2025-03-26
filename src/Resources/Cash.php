@@ -18,7 +18,11 @@ class Cash extends Resource
      */
     public function create($type = null, $options = null)
     {
-
+        $medio = strtolower($type);
+        if($medio == "baloto"){
+            throw new ErrorException($this->epayco->lang, 109);
+        }
+        
         $methods_payment = $this->request(
             "GET",
             "/payment/cash/entities",
@@ -32,10 +36,7 @@ class Cash extends Resource
             false,
             true
         );
-        $medio = strtolower($type);
-        if($medio == "baloto"){
-            throw new ErrorException($this->epayco->lang, 109);
-        }
+        
         if(!isset($methods_payment->data) || !is_array($methods_payment->data) || count($methods_payment->data) == 0){
             throw new ErrorException($this->epayco->lang, 106);
         }

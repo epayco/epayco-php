@@ -108,7 +108,7 @@ class GraphqlClient
             );
 
 
-            $response = Requests::post(Client::BASE_URL . '/graphql', $headers, $body);
+            $response = Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . '/graphql', $headers, $body, $options);
 
         } catch (\Throwable $th) {
             return $th->getMessage();
