@@ -7,8 +7,6 @@ use Epayco\Utils\PaycoAes;
 use Epayco\Util;
 use Epayco\Exceptions\ErrorException;
 use WpOrg\Requests\Requests;
-use GuzzleHttp\Client as ClientHttp;
-use GuzzleHttp\Psr7\Request as RequestHttp;
 
 /**
  * Client conection api epayco
@@ -52,7 +50,10 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-
+        if(!is_null($data) && is_array($data) && !isset($data['extras_epayco'])){
+            $data['extras_epayco']= array();
+            $data['extras_epayco'] = ["extra5" => "P42"];
+        }
         /**
          * Switch traslate keys array petition in secure
          */
@@ -65,32 +66,32 @@ class Client extends GraphqlClient
             /**
              * Set heaToken bearer
              */
-            
-        $cookie_name = $api_key . ($apify ? "_apify" : "");
-        if(!isset($_COOKIE[$cookie_name])) {
-            //  echo "Cookie named '" . $cookie_name . "' is not set!";
-              $dataAuth =$this->authentication($api_key,$private_key, $apify);
-              $json = json_decode($dataAuth);
-              if(!is_object($json)) {
-                  throw new ErrorException("Error get bearer_token.", 106);
-              }
-              $bearer_token = false;
-              if(isset($json->bearer_token)) {
-                  $bearer_token=$json->bearer_token;
-              }else if(isset($json->token)){
-                $bearer_token= $json->token;
-              }
-              if(!$bearer_token) {
-                  $msj = isset($json->message) ? $json->message : "Error get bearer_token";
-                  if($msj == "Error get bearer_token" && isset($json->error)){
-                      $msj = $json->error;
-                  }
-                  throw new ErrorException($msj, 422);
-              }
-              $cookie_value = $bearer_token;
-              setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
-            //  echo "token con login".$bearer_token;
-              }else{
+
+            $cookie_name = $api_key . ($apify ? "_apify" : "");
+            if(!isset($_COOKIE[$cookie_name])) {
+                //  echo "Cookie named '" . $cookie_name . "' is not set!";
+                $dataAuth =$this->authentication($api_key,$private_key, $apify);
+                $json = json_decode($dataAuth);
+                if(!is_object($json)) {
+                    throw new ErrorException("Error get bearer_token.", 106);
+                }
+                $bearer_token = false;
+                if(isset($json->bearer_token)) {
+                    $bearer_token=$json->bearer_token;
+                }else if(isset($json->token)){
+                    $bearer_token= $json->token;
+                }
+                if(!$bearer_token) {
+                    $msj = isset($json->message) ? $json->message : "Error get bearer_token";
+                    if($msj == "Error get bearer_token" && isset($json->error)){
+                        $msj = $json->error;
+                    }
+                    throw new ErrorException($msj, 422);
+                }
+                $cookie_value = $bearer_token;
+                setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/");
+                //  echo "token con login".$bearer_token;
+            }else{
                 $bearer_token = $_COOKIE[$cookie_name];
             }
 
@@ -125,20 +126,8 @@ class Client extends GraphqlClient
                     $_url = $this->getEpaycoBaseUrl(Client::BASE_URL) . $url;
                 }
 
-                /*$response = Requests::get($_url, $headers, $options);
-                $statusCOde = $response->status_code;
-                $bodyResult = $response->body;*/
-                $client = new ClientHttp();
-                $epaycoData = $data ?? [];
-                $request = new RequestHttp('GET', $_url, $headers, json_encode($epaycoData));
-                $response = $client->sendAsync($request)->wait();
-                $statusCOde = $response->getStatusCode();
-                $bodyResult = $response->getBody();
+                $response = Requests::get($_url, $headers, $options);
             } elseif ($method == "POST") {
-                if(!is_null($data) && is_array($data) && !isset($data['extras_epayco'])){
-                    $data['extras_epayco']= array();
-                    $data['extras_epayco'] = ["extra5" => "P42"];
-                }
                 if($apify){
                     $response = Requests::post($this->getEpaycoBaseApify(Client::BASE_URL_APIFY) . $url, $headers, json_encode($data), $options);
                 }
@@ -155,42 +144,38 @@ class Client extends GraphqlClient
                     $response = Requests::post($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, json_encode($data), $options);
 
                 }
-                $statusCOde = $response->status_code;
-                $bodyResult = $response->body;
             } elseif ($method == "DELETE") {
                 $response = Requests::delete($this->getEpaycoBaseUrl(Client::BASE_URL) . $url, $headers, $options);
-                $statusCOde = $response->status_code;
-                $bodyResult = $response->body;
             }
         } catch (\Exception $e) {
             throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
-            if ($statusCOde >= 200 && $statusCOde <= 206) {
+            if ($response->status_code >= 200 && $response->status_code <= 206) {
                 if ($method == "DELETE") {
-                    return $statusCOde == 204 || $statusCOde == 200;
+                    return $response->status_code == 204 || $response->status_code == 200;
                 }
-                return json_decode($bodyResult);
+                return json_decode($response->body);
             }
-            if ($statusCOde == 400) {
+            if ($response->status_code == 400) {
                 try {
-                    $error = (array)json_decode($bodyResult)->errors[0];
+                    $error = (array)json_decode($response->body)->errors[0];
                     $message = current($error);
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
                 throw new ErrorException($message, 103);
             }
-            if ($statusCOde == 401) {
+            if ($response->status_code == 401) {
                 throw new ErrorException('Unauthorized', 104);
             }
-            if ($statusCOde == 404) {
+            if ($response->status_code == 404) {
                 throw new ErrorException('Not found', 105);
             }
-            if ($statusCOde == 403) {
+            if ($response->status_code == 403) {
                 throw new ErrorException('Permission denegated', 106);
             }
-            if ($statusCOde == 405) {
+            if ($response->status_code == 405) {
                 throw new ErrorException('Not allowed', 107);
             }
             throw new ErrorException('Internal error', 102);
@@ -236,7 +221,7 @@ class Client extends GraphqlClient
     }
 
     public function authentication($api_key, $private_key, $apify)
-    {   
+    {
         $data = array(
             'public_key' => $api_key,
             'private_key' => $private_key
