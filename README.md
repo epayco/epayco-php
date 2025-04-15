@@ -82,7 +82,10 @@ $customer = $epayco->customer->get("id_client");
 #### List
 
 ```php
-$customer = $epayco->customer->getList();
+$customer = $epayco->customer->getList([
+    "page"=>6,
+    "perPage"=>10
+]);
 ```
 
 #### Update
@@ -137,7 +140,20 @@ $plan = $epayco->plan->create(array(
      "currency" => "cop",
      "interval" => "month",
      "interval_count" => 1,
-     "trial_days" => 30
+     "trial_days" => 30,
+     "ip" => "127.0.0.1",
+     "iva" => 5700,
+     "ico" => 0,
+     "planLink" => "https://github.com/epayco",
+     "greetMessage" => "discounted react and redux course",
+     "linkExpirationDate" => "2025-03-11",
+     "subscriptionLimit"=> 10, #Subscription limit between 0 and 10000
+      "imgUrl"=>"https://epayco.com/wp-content/uploads/2023/04/logo-blanco.svg",
+      "discountValue"=>5000, #discount value
+      "discountPercentage"=>19, #discount percentage
+      "transactionalLimit"=> 2, #transactional Limit
+      "additionalChargePercentage"=>0.0, #Additional charge percentage limit
+      "firstPaymentAdditionalCost"=>45700  #Installation Cost
 ));
 ```
 
@@ -151,6 +167,26 @@ $plan = $epayco->plan->get("coursereact");
 
 ```php
 $plan = $epayco->plan->getList();
+```
+
+#### Upadte
+
+```php
+$plan = $epayco->plan->update("coursereact",array(
+        "name" => "Course react js",
+        "description" => "Course react and redux",
+        "amount" => 35700,
+        "currency" => "cop",
+        "interval" => "month",
+        "interval_count" => 1,
+        "trial_days" => 30,
+        "ip"=> "127.0.0.1",
+        "iva" => 1900,
+        "ico" => 0,
+        "transactionalLimit"=> 3,
+        "additionalChargePercentage"=>0.0,
+        "afterPayment"=>"message after paying"
+));
 ```
 
 #### Remove
@@ -400,15 +436,17 @@ $pay = $epayco->charge->create(array(
     "cell_phone"=> "3010000001",
     "ip" => "190.000.000.000",  // This is the client's IP, it is required
     "url_response" => "https://tudominio.com/respuesta.php",
-    "url_confirmation" => "https://tudominio.com/confirmacion.php",\
-    "method_confirmation" => "GET".
-    "use_default_card_customer" => true,/*if the user wants to be charged with the card that the customer currently has as default = true*/
-    //Los parámetros extras deben ser enviados tipo string, si se envía tipo array generara error.
-    "extra1" => "data 1",
-    "extra2" => "data 2",
-    "extra3" => "data 3",
-    "extra4" => "data 4",
-    "extra5" => "data 5"
+    "url_confirmation" => "https://tudominio.com/confirmacion.php",
+    "method_confirmation" => "GET",
+    "use_default_card_customer" => true,  // if the user wants to be charged with the card that the customer currently has as default = true
+    // Los parámetros "extras" deben ser enviados como cadenas de texto (string). Aunque se agrupen dentro de un array, cada parámetro individual debe ser un string. Si se envían como otro tipo de datos, como arrays anidados, se generará un error.
+	 "extras"=> array(
+        "extra1" => "data 1",
+        "extra2" => "data 2",
+        "extra3" => "data 3",
+        "extra4" => "data 4",
+        "extra5" => "data 5"
+    )
 ));
 ```
 
