@@ -159,8 +159,11 @@ class Client extends GraphqlClient
             }
             if ($response->status_code == 400) {
                 try {
-                    $error = (array)json_decode($response->body)->errors[0];
-                    $message = current($error);
+                    $error = (array)json_decode($response->body);
+                    $isError = $error->errors[0] ?? $error;
+                    $message = current($isError);
+
+                    return $message;
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
