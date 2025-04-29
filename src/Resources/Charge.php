@@ -35,17 +35,17 @@ class Charge extends Resource
      * @param  String $uid id transaction
      * @return object
      */
-    public function transaction($uid = null)
+    public function transaction($uid = null, $epaycooptions = [])
     {
         return $this->request(
-                "GET",
-                "/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
-                $api_key = $this->epayco->api_key,
-                $uid,
-                $private_key = $this->epayco->private_key,
-                $test = $this->epayco->test,
-                $switch = true,
-                $lang = $this->epayco->lang
+            "GET",
+            "/restpagos/transaction/response.json?ref_payco=" . $uid . "&public_key=" . $this->epayco->api_key,
+            $api_key = $this->epayco->api_key,
+            $epaycooptions, 
+            $private_key = $this->epayco->private_key,
+            $test = $this->epayco->test,
+            $switch = true,
+            $lang = $this->epayco->lang
         );
     }
 
