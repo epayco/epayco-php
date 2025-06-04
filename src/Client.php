@@ -15,7 +15,7 @@ class Client extends GraphqlClient
 {
 
     const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co/restpagos";
+    const BASE_URL_SECURE = "https://secure.payco.co";
     const BASE_URL_APIFY = "https://apify.epayco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
