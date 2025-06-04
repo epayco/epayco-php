@@ -159,8 +159,9 @@ class Client extends GraphqlClient
             }
             if ($response->status_code == 400) {
                 try {
-                    $error = (array)json_decode($response->body)->errors[0];
-                    $message = current($error);
+                    $errors = (array)json_decode($response->body);
+                    $error = isset($errors['message']) ? $errors['message'] : (isset($errors['errors']) ? $errors['errors'][0] : "Ocurrio un error, por favor contactar con soporte");
+                    $message = $error;
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
