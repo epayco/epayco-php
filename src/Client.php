@@ -162,6 +162,11 @@ class Client extends GraphqlClient
                     $errors = (array)json_decode($response->body);
                     $error = isset($errors['message']) ? $errors['message'] : (isset($errors['errors']) ? $errors['errors'][0] : "Ocurrio un error, por favor contactar con soporte");
                     $message = $error;
+                    return (object)array(
+                        "status" => false,
+                        "message" => $message,
+                        "data" => array()
+                    );
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
