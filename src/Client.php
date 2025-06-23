@@ -14,9 +14,10 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
-    const BASE_URL_APIFY = "https://apify.epayco.co";
+    const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
+    const BASE_URL_SECURE = "https://eks-rest-pagos-service.epayco.io/";
+    const ENTORNO = "/restpagos";
+    const BASE_URL_APIFY = "https://eks-apify-service.epayco.io";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -50,8 +51,7 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if(!is_null($data) && is_array($data) && !isset($data['extras_epayco'])){
-            $data['extras_epayco']= array();
+        if(!isset($data['extras_epayco'])){
             $data['extras_epayco'] = ["extra5" => "P42"];
         }
         /**
@@ -66,32 +66,32 @@ class Client extends GraphqlClient
             /**
              * Set heaToken bearer
              */
-
-            $cookie_name = $api_key . ($apify ? "_apify" : "");
-            if(!isset($_COOKIE[$cookie_name])) {
-                //  echo "Cookie named '" . $cookie_name . "' is not set!";
-                $dataAuth =$this->authentication($api_key,$private_key, $apify);
-                $json = json_decode($dataAuth);
-                if(!is_object($json)) {
-                    throw new ErrorException("Error get bearer_token.", 106);
-                }
-                $bearer_token = false;
-                if(isset($json->bearer_token)) {
-                    $bearer_token=$json->bearer_token;
-                }else if(isset($json->token)){
-                    $bearer_token= $json->token;
-                }
-                if(!$bearer_token) {
-                    $msj = isset($json->message) ? $json->message : "Error get bearer_token";
-                    if($msj == "Error get bearer_token" && isset($json->error)){
-                        $msj = $json->error;
-                    }
-                    throw new ErrorException($msj, 422);
-                }
-                $cookie_value = $bearer_token;
-                setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/");
-                //  echo "token con login".$bearer_token;
-            }else{
+            
+        $cookie_name = $api_key . ($apify ? "_apify" : "");
+        if(!isset($_COOKIE[$cookie_name])) {
+            //  echo "Cookie named '" . $cookie_name . "' is not set!";
+              $dataAuth =$this->authentication($api_key,$private_key, $apify);
+              $json = json_decode($dataAuth);
+              if(!is_object($json)) {
+                  throw new ErrorException("Error get bearer_token.", 106);
+              }
+              $bearer_token = false;
+              if(isset($json->bearer_token)) {
+                  $bearer_token=$json->bearer_token;
+              }else if(isset($json->token)){
+                $bearer_token= $json->token;
+              }
+              if(!$bearer_token) {
+                  $msj = isset($json->message) ? $json->message : "Error get bearer_token";
+                  if($msj == "Error get bearer_token" && isset($json->error)){
+                      $msj = $json->error;
+                  }
+                  throw new ErrorException($msj, 422);
+              }
+              $cookie_value = $bearer_token;
+              setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/"); 
+            //  echo "token con login".$bearer_token;
+              }else{
                 $bearer_token = $_COOKIE[$cookie_name];
             }
 
@@ -121,7 +121,7 @@ class Client extends GraphqlClient
                 if($apify){
                     $_url = $this->getEpaycoBaseApify( Client::BASE_URL_APIFY) . $url;
                 }elseif ($switch) {
-                    $_url = $this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url;
+                    $_url = $this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $this->getEpaycoEntorno(Client::ENTORNO) .  $url;
                 } else {
                     $_url = $this->getEpaycoBaseUrl(Client::BASE_URL) . $url;
                 }
@@ -134,7 +134,7 @@ class Client extends GraphqlClient
                 elseif ($switch) {
                     $data = $util->mergeSet($data, $test, $lang, $private_key, $api_key, $cash);
 
-                    $response = Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $url, $headers, json_encode($data), $options);
+                    $response = Requests::post($this->getEpaycoSecureBaseUrl(Client::BASE_URL_SECURE) . $this->getEpaycoEntorno(Client::ENTORNO) . $url, $headers, json_encode($data), $options);
                 } else {
 
                     if (!$card) {
@@ -159,10 +159,8 @@ class Client extends GraphqlClient
             }
             if ($response->status_code == 400) {
                 try {
-                    $errors = (array)json_decode($response->body);
-                    $error = isset($errors['message']) ? $errors['message'] : (isset($errors['errors']) ? $errors['errors'][0] : "Ocurrio un error, por favor contactar con soporte");
-                    $message = $error;
-                    return $message;
+                    $error = (array)json_decode($response->body)->errors[0];
+                    $message = current($error);
                 } catch (\Exception $e) {
                     throw new ErrorException($e->getMessage(), $e->getCode());
                 }
@@ -223,7 +221,7 @@ class Client extends GraphqlClient
     }
 
     public function authentication($api_key, $private_key, $apify)
-    {
+    {   
         $data = array(
             'public_key' => $api_key,
             'private_key' => $private_key
@@ -246,6 +244,7 @@ class Client extends GraphqlClient
         return isset($response->body) ? $response->body : false;
     }
 
+
     protected function getEpaycoSecureBaseUrl($default)
     {
         $epaycoEnv = getenv('EPAYCO_PHP_SDK_ENV_REST');
@@ -259,6 +258,15 @@ class Client extends GraphqlClient
         return $default;
     }
 
+    protected function getEpaycoEntorno($default)
+    {
+        $epaycoEnv = getenv('ENTORNO');
+        if($epaycoEnv){
+            return $epaycoEnv;
+        }
+        return $default;
+    }
+
     protected function getEpaycoBaseApify($default)
     {
         $epaycoEnv = getenv('BASE_URL_APIFY');
@@ -267,4 +275,6 @@ class Client extends GraphqlClient
         }
         return $default;
     }
+
+     
 }
