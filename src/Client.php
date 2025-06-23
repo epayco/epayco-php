@@ -51,7 +51,7 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if(!isset($data['extras_epayco'])){
+        if ($method == "POST" && !isset($data['extras_epayco'])) {
             $data['extras_epayco'] = ["extra5" => "P42"];
         }
         /**
