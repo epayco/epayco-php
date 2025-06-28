@@ -15,21 +15,25 @@ class Bank extends Resource
      */
     public function pseBank($testMode = null)
     {
-        $url = "/pse/bancos.json?public_key=" . $this->epayco->api_key;
-        if(isset($testMode) && gettype($testMode) === "boolean"){
-            $test = $testMode  ? "TRUE" : "FALSE";     
-            $url = $url."&test=".$test;
+
+        $url = "/payment/pse/banks";
+        if(isset($testMode) && gettype($testMode) === "boolean"){ 
+            $url = $url;
         }
-        return $this->request(
-               "GET",
-               $url,
-               $api_key = $this->epayco->api_key,
-               $options = null,
-               $private_key = $this->epayco->private_key,
-               $this->epayco->test,
-               $switch = true,
-               $lang = $this->epayco->lang
-        );
+       return $this->request(
+              "GET",
+              $url,
+              $api_key = $this->epayco->api_key,
+              $options = null,
+              $private_key = $this->epayco->private_key,
+              $this->epayco->test,
+              $switch = false,
+              $lang = $this->epayco->lang,
+              null,
+              null,
+              true
+       );
+
     }
 
     /**
