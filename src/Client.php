@@ -147,11 +147,13 @@ class Client extends GraphqlClient
             throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
-            if ($response->status_code >= 200 && $response->status_code <= 206) {
+             if ($response->status_code >= 200 && $response->status_code <= 206) {
                 if ($method == "DELETE") {
                     return $response->status_code == 204 || $response->status_code == 200;
                 }
-                return json_decode($response->body);
+               
+                $decoded = json_decode($response->body, true);
+                return json_encode($decoded, JSON_PRETTY_PRINT);
             }
 
             if ($response->status_code >= 400 && $response->status_code < 600) {
