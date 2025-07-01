@@ -154,9 +154,23 @@ class Client extends GraphqlClient
                 return json_decode($response->body);
             }
 
-            if (in_array($response->status_code, [400, 401, 403, 404, 405])) {
+            if ($response->status_code >= 400 && $response->status_code < 600) {
+                $body = $response->body;
 
-                $errors = (array)json_decode($response->body);
+
+                if (empty($body)) {
+                    $responseDataBody = array(
+                        "status" => false,
+                        "message" => "La respuesta del servidor está vacía o no es válida.",
+                        "data" => []
+                    );
+                    return json_encode($responseDataBody, JSON_PRETTY_PRINT);
+                }
+
+                $errors = (array)json_decode($body);
+
+
+                $error = "Ocurrió un error, por favor contactar con soporte.";
 
                 switch ($response->status_code) {
                     case 400:
@@ -181,7 +195,7 @@ class Client extends GraphqlClient
                                 : "Acceso prohibido, no tienes permisos para esta acción");
                         break;
                     case 404:
-                        $error = "La ruta en la que estas realizando la peticion no existe";
+                        $error = "La ruta en la que estás realizando la petición no existe";
                         break;
                     case 405:
                         $error = isset($errors['message'])
@@ -191,7 +205,7 @@ class Client extends GraphqlClient
                                 : "Método no permitido en esta ruta");
                         break;
                     default:
-                        $error = "Ocurrió un error, por favor contactar con soporte";
+                        $error = "Error inesperado del servidor (HTTP {$response->status_code})";
                         break;
                 }
 
