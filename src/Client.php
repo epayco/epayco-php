@@ -14,10 +14,10 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
-    const BASE_URL_SECURE = "https://eks-rest-pagos-service.epayco.io";
+    const BASE_URL = "https://api.secure.payco.co";
+    const BASE_URL_SECURE = "https://secure.payco.co";
     const ENTORNO = "/restpagos";
-    const BASE_URL_APIFY = "https://eks-apify-service.epayco.io";
+    const BASE_URL_APIFY = "https://apify.epayco.co";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -147,11 +147,11 @@ class Client extends GraphqlClient
             throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
-             if ($response->status_code >= 200 && $response->status_code <= 206) {
+            if ($response->status_code >= 200 && $response->status_code <= 206) {
                 if ($method == "DELETE") {
                     return $response->status_code == 204 || $response->status_code == 200;
                 }
-               
+
                 $decoded = json_decode($response->body, true);
                 return json_encode($decoded, JSON_PRETTY_PRINT);
             }
