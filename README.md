@@ -243,6 +243,7 @@ $sub = $epayco->subscriptions->charge(array(
   "phone"=> "2550102",
   "cell_phone"=> "3010000001",
   "ip" => "190.000.000.000"  // This is the client's IP, it is required
+  "idSubscription" => "idSubscription"
 ));
 ```
 
