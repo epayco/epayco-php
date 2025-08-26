@@ -14,7 +14,7 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
+     const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
     const BASE_URL_SECURE = "https://eks-rest-pagos-service.epayco.io";
     const ENTORNO = "/restpagos";
     const BASE_URL_APIFY = "https://eks-apify-service.epayco.io";
@@ -96,8 +96,9 @@ class Client extends GraphqlClient
         } catch (\Exception $e) {
             $data = array(
                 "status" => false,
-                "message" => $e->getMessage(),
-                "data" => array()
+                "message" => "Error get bearer_token: " ? "No autorizado, revisa tus credenciales" : $e->getMessage(),
+                "status_code" => $e->getCode(),
+                "data" => isset($errors['data']) ? $errors['data'] : [],
             );
             $objectReturnError = (object)$data;
             return $objectReturnError;
@@ -147,13 +148,12 @@ class Client extends GraphqlClient
             throw new ErrorException($e->getMessage(), $e->getCode());
         }
         try {
-             if ($response->status_code >= 200 && $response->status_code <= 206) {
+            if ($response->status_code >= 200 && $response->status_code <= 206) {
                 if ($method == "DELETE") {
                     return $response->status_code == 204 || $response->status_code == 200;
                 }
-               
-                $decoded = json_decode($response->body, true);
-                return json_encode($decoded, JSON_PRETTY_PRINT);
+                // Return decoded response body instead of $response->data->raw_body
+                return json_decode($response->body);
             }
 
             if ($response->status_code >= 400 && $response->status_code < 600) {
@@ -164,7 +164,8 @@ class Client extends GraphqlClient
                     $responseDataBody = array(
                         "status" => false,
                         "message" => "La respuesta del servidor está vacía o no es válida.",
-                        "data" => []
+                        "data" =>  isset($errors['data']) ? $errors['data'] : [],
+                        
                     );
                     return json_encode($responseDataBody, JSON_PRETTY_PRINT);
                 }
@@ -214,7 +215,8 @@ class Client extends GraphqlClient
                 $responseData = array(
                     "status" => false,
                     "message" => $error,
-                    "data" => []
+                    "data" => isset($errors['data']) ? $errors['data'] : [],
+                    "status_code" => $response->status_code
                 );
 
                 return json_encode($responseData, JSON_PRETTY_PRINT);
