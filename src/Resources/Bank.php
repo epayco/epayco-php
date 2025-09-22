@@ -15,25 +15,25 @@ class Bank extends Resource
      */
     public function pseBank($testMode = null)
     {
-
-        $url = "/payment/pse/banks";
-        if(isset($testMode) && gettype($testMode) === "boolean"){ 
-            $url = $url;
+        if ($testMode === null) {
+            $test = $this->epayco->test === "TRUE" || $this->epayco->test === true;
+        } else {
+            $test = (bool)$testMode;
         }
-       return $this->request(
-              "GET",
-              $url,
-              $api_key = $this->epayco->api_key,
-              $options = null,
-              $private_key = $this->epayco->private_key,
-              $this->epayco->test,
-              $switch = false,
-              $lang = $this->epayco->lang,
-              null,
-              null,
-              true
-       );
-
+        $url = "/payment/pse/banks?test=" . ($test ? "true" : "false");
+        return $this->request(
+            "GET",
+            $url,
+            $this->epayco->api_key,
+            null,
+            $this->epayco->private_key,
+            $test,
+            false,
+            $this->epayco->lang,
+            null,
+            null,
+            true
+        );
     }
 
     /**
@@ -44,14 +44,14 @@ class Bank extends Resource
     public function create($options = null)
     {
         return $this->request(
-               "POST",
-               "/pagos/debitos.json",
-               $api_key = $this->epayco->api_key,
-               $options,
-               $private_key = $this->epayco->private_key,
-               $test = $this->epayco->test,
-               $switch = true,
-               $lang = $this->epayco->lang
+            "POST",
+            "/pagos/debitos.json",
+            $api_key = $this->epayco->api_key,
+            $options,
+            $private_key = $this->epayco->private_key,
+            $test = $this->epayco->test,
+            $switch = true,
+            $lang = $this->epayco->lang
         );
     }
 
@@ -63,14 +63,14 @@ class Bank extends Resource
     public function get($uid = null)
     {
         return $this->request(
-                "GET",
-                "/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
-                $api_key = $this->epayco->api_key,
-                $uid,
-                $private_key = $this->epayco->private_key,
-                $test = $this->epayco->test,
-                $switch = true,
-                $lang = $this->epayco->lang
+            "GET",
+            "/pse/transactioninfomation.json?transactionID=" . $uid . "&&public_key=" . $this->epayco->api_key,
+            $api_key = $this->epayco->api_key,
+            $uid,
+            $private_key = $this->epayco->private_key,
+            $test = $this->epayco->test,
+            $switch = true,
+            $lang = $this->epayco->lang
         );
     }
 }
