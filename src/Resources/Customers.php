@@ -51,15 +51,13 @@ class Customers extends Resource
      * Get list customer from client epayco
      * @return object
      */
-     public function getList($options = null)
+    public function getList()
     {
-        $path= isset($options) ? "?page=".$options['page']."&perPage=".$options['perPage']:"";
-        $url = "/payment/v1/customers".$path;
         return $this->request(
                "GET",
-                $url,
+               "/payment/v1/customers/" . $this->epayco->api_key,
                $api_key = $this->epayco->api_key,
-               $options,
+               $options = null,
                $private_key = $this->epayco->private_key,
                $test = $this->epayco->test,
                $switch = false,

@@ -75,7 +75,7 @@ class Plan extends Resource
     {
         return $this->request(
                "POST",
-               "/recurring/v1/plan/edit/" . $uid,
+               "/recurring/v1/plan/edit/" . $this->epayco->api_key . "/" . $uid . "/",
                $api_key = $this->epayco->api_key,
                $options,
                $private_key = $this->epayco->private_key,
