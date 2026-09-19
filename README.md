@@ -326,6 +326,21 @@ $split_pay = $epayco->bank->create(array(
 
 ### Cash
 
+> As of SDK-1366, `cash->create()` uses ePayco's new `ms-transaction` service
+> (`apiflow.epayco.io`) by default instead of the legacy `secure.payco.co`
+> endpoint. The public method signature and the response shape below are
+> unchanged. To keep using the legacy backend for cash specifically, pass
+> `"transactionMethods" => ["cash"]` when constructing `Epayco`:
+> ```php
+> $epayco = new Epayco(array(
+>     "apiKey" => "...",
+>     "privateKey" => "...",
+>     "test" => true,
+>     "lenguage" => "ES",
+>     "transactionMethods" => array("cash"),
+> ));
+> ```
+
 #### Create
 
 ```php
