@@ -572,7 +572,7 @@ class MsTransactionCash
     {
         $options = is_array($options) ? $options : array();
         if (empty($options["ip"])) {
-            $options["ip"] = @gethostbyname(gethostname());
+            $options["ip"] = self::resolveIp();
         }
 
         $body = self::buildBody($epayco, $franchise, $options);
@@ -601,6 +601,33 @@ class MsTransactionCash
         }
 
         return self::mapToLegacyShape($raw, $options, $medio);
+    }
+
+    /**
+     * Resolve the caller's public IP the same way the Node/Python migrations
+     * of this same flow do (verified empirically): if `options.ip` wasn't
+     * provided, ask https://api.ipify.org for the outbound public IP, instead
+     * of a host-local lookup like `gethostbyname(gethostname())` -- in a
+     * containerized/server environment that resolves to an internal/private
+     * IP (e.g. a Docker bridge address), never the actual customer-facing IP
+     * ms-transaction expects for fraud/geo checks. Best-effort: falls back to
+     * null (same as the field simply being omitted) if the call fails, rather
+     * than sending a wrong IP.
+     *
+     * @return string|null
+     */
+    public static function resolveIp()
+    {
+        try {
+            $response = Requests::get("https://api.ipify.org?format=json", array(), array(
+                "timeout" => self::REQUEST_TIMEOUT,
+                "connect_timeout" => self::REQUEST_TIMEOUT,
+            ));
+            $json = json_decode($response->body, true);
+            return isset($json["ip"]) ? $json["ip"] : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
