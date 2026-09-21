@@ -100,9 +100,10 @@ class Bank extends Resource
      * `transactionMethods: ["bank"]` opt-out as create() above applies here
      * too.
      *
-     * Unlike create(), this does NOT reshape the new backend's response into
-     * the legacy shape -- see MsTransactionBank::getTransaction's own
-     * docblock for why there was no verified legacy shape to reshape into.
+     * Like create(), this reshapes the new backend's response into the same
+     * legacy shape (see MsTransactionBank::getTransaction's own docblock --
+     * verified field-by-field against a real GET response, SDK-1365 QA
+     * follow-up).
      *
      * @param  String $uid id transaction (ref_payco)
      * @return object

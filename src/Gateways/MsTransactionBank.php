@@ -38,13 +38,29 @@ use WpOrg\Requests\Requests;
  * empirically in the sibling Node SDK's migration of this same flow
  * (SDK-1355, merchant 630339, bank code 1077).
  *
- * IMPORTANT for callers: createTransaction() resolves to the exact same
- * response shape the legacy secure.payco.co/restpagos/pagos/debitos.json
- * endpoint returns today (see mapToLegacyShape) -- SDK-1365 requires
- * consumers of this SDK (e.g. cms-backend-platforms) to see one consistent
- * shape regardless of which backend actually served the request.
- * getTransaction(), by contrast, returns the ms-transaction response as-is
- * (no legacy remapping) -- see its own docblock for why.
+ * IMPORTANT for callers: both createTransaction() and getTransaction()
+ * resolve to the exact same response shape the legacy
+ * secure.payco.co/restpagos/pagos/debitos.json (create) /
+ * .../pse/transactioninfomation.json (query) endpoints return today (see
+ * mapToLegacyShape) -- SDK-1365 requires consumers of this SDK (e.g.
+ * cms-backend-platforms) to see one consistent shape regardless of which
+ * backend actually served the request, and regardless of whether they just
+ * called create() or are polling get() for the same ref_payco afterwards.
+ * getTransaction() reuses mapToLegacyShape() as-is (not a variant) --
+ * verified field-by-field against a real paired pre-prod call (merchant
+ * 630339, ref_payco 1000011709, bank code 1077): the GET response carries
+ * the same field names create()'s raw response does (refPayco, invoice,
+ * description, amount, tax, ico, taxBase, currency, status, response,
+ * responseCode, authorization, receipt, date, extras, extrasEpayco,
+ * paymentProviderData.cycle/ticketId/trazabilityCode), plus a handful of
+ * extra fields GET carries that create()'s raw response doesn't
+ * (subtotal, franchise, nameBank, city, testMode, ip, payerInformation) --
+ * mapToLegacyShape() already ignores anything it doesn't explicitly map, so
+ * these are silently and safely dropped, same as any other unmapped field.
+ * `urlbanco` legitimately resolves to null on a GET response (no
+ * `paymentProviderData.urlPayment` there -- the bank-redirect URL doesn't
+ * apply once you're just checking status), which is the pre-existing
+ * `isset()`-guarded behavior in mapToLegacyShape(), not special-cased here.
  */
 class MsTransactionBank
 {
@@ -498,12 +514,29 @@ class MsTransactionBank
 
     /**
      * Map a successful ms-transaction response into the exact response shape
-     * the legacy secure.payco.co/restpagos/pagos/debitos.json endpoint
-     * returns today (see Resources/Bank.php), so callers get the identical
-     * shape regardless of which backend actually served the request --
-     * mirrors mapToLegacyShape() in the sibling Node SDK's
+     * the legacy secure.payco.co/restpagos/pagos/debitos.json (create) /
+     * .../pse/transactioninfomation.json (query) endpoints return today (see
+     * Resources/Bank.php), so callers get the identical shape regardless of
+     * which backend actually served the request, AND regardless of whether
+     * they call createTransaction() or getTransaction() for the same
+     * ref_payco -- mirrors mapToLegacyShape() in the sibling Node SDK's
      * msTransactionBank.js (SDK-1355), verified there field-by-field against
-     * a real paired pre-prod call (merchant 630339, bank code 1077).
+     * a real paired pre-prod call (merchant 630339, bank code 1077), and
+     * verified again directly in this PHP SDK (SDK-1365 QA follow-up)
+     * against a real GET response for the same merchant/ref_payco -- same
+     * field names, so this single function (no GET-specific variant) is
+     * reused for both callers as-is. Any field present in a GET response but
+     * not a create() response (subtotal, franchise, nameBank, city,
+     * testMode, ip, payerInformation) is simply not read here and dropped,
+     * same as any other unmapped field.
+     *
+     * Known gap, not addressed here: when ms-transaction rejects a GET
+     * outright (raw.success === false, e.g. ref_payco not found), this falls
+     * through to buildLegacyErrorShape()'s hardcoded `last_action:
+     * "Ingresar pago debito Pse"` ("enter debit PSE payment"), which is
+     * create()-specific wording -- no real failed-GET response was captured
+     * to verify what legacy's own query endpoint says instead, so this is
+     * left as-is rather than guessed.
      *
      * PII fields are deliberately NOT read from $options here (unlike
      * MsTransactionCash::mapToLegacyShape): a real legacy PSE response has no
@@ -637,18 +670,18 @@ class MsTransactionBank
      * Jira description (`GET .../v1/pse/transactions?ref_payco=...`)
      * returned 404 in that same Node-SDK test and is deliberately NOT used.
      *
-     * Unlike createTransaction(), this does NOT remap the response into the
-     * legacy shape: the sibling Node SDK's own migration of this exact same
-     * flow (SDK-1355) returns the ms-transaction response as-is here too, and
-     * this SDK has no verified legacy Bank::get() response shape to safely
-     * reshape into (Resources/Cash.php's own equivalent `transaction()`
-     * lookup was explicitly out of scope for SDK-1366, so there was no prior
-     * PHP precedent to mirror either).
+     * Like createTransaction(), this remaps the response into the exact
+     * shape the legacy secure.payco.co/restpagos/pse/transactioninfomation.json
+     * endpoint returns today (see mapToLegacyShape) -- SDK-1365 QA follow-up
+     * found the GET response carries the same field names create()'s raw
+     * response does (see mapToLegacyShape's own docblock for the field-by-
+     * field verification), so mapToLegacyShape() is reused as-is here, not a
+     * GET-specific variant.
      *
      * @param  object      $epayco the Epayco instance (api_key/private_key/test/lang)
      * @param  string|int  $refPayco must be a plain positive integer (see
      *         REF_PAYCO_REGEX)
-     * @return object the ms-transaction response body as-is
+     * @return object legacy-shaped response (see mapToLegacyShape)
      */
     public static function getTransaction($epayco, $refPayco)
     {
@@ -674,12 +707,12 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body);
-        if (!is_object($raw) && !is_array($raw)) {
+        $raw = json_decode($response->body, true);
+        if (!is_array($raw)) {
             throw new ErrorException($epayco->lang, 106);
         }
 
-        return $raw;
+        return self::mapToLegacyShape($raw);
     }
 
     /**
