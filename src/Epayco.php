@@ -47,8 +47,9 @@ class Epayco
      * equivalent `transactionMethods` option already used by this SDK's own
      * ms-transaction migration in the sibling Node/Python SDKs
      * (SDK-1352/SDK-1029/SDK-1030). Empty by default, i.e. every migrated
-     * payment method (currently just "cash", see SDK-1366 and
-     * Resources/Cash.php) uses the new backend unless explicitly opted out.
+     * payment method (currently "cash", see SDK-1366 and Resources/Cash.php;
+     * and "bank", see SDK-1365 and Resources/Bank.php) uses the new backend
+     * unless explicitly opted out.
      * @var array
      */
     public $transactionMethods = array();
