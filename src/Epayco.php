@@ -48,7 +48,8 @@ class Epayco
      * ms-transaction migration in the sibling Node/Python SDKs
      * (SDK-1352/SDK-1029/SDK-1030). Empty by default, i.e. every migrated
      * payment method (currently "cash", see SDK-1366 and Resources/Cash.php;
-     * and "bank", see SDK-1365 and Resources/Bank.php) uses the new backend
+     * "bank", see SDK-1365 and Resources/Bank.php; and "safetypay",
+     * see SDK-1368 and Resources/Safetypay.php) uses the new backend
      * unless explicitly opted out.
      * @var array
      */
