@@ -546,23 +546,116 @@ class MsTransactionSafetypay
      *   `urlBank` would read an index off a list. Mirrors the equivalent
      *   `Array.isArray(providerData)` guard in the sibling Node SDK.
      *
-     * Unlike MsTransactionBank::mapToLegacyShape, there is NO separate thin
-     * error shape for `success === false`: the legacy apify SafetyPay
-     * endpoint's own failure response is not known to differ structurally
-     * from its success one, and the sibling Node SDK's SafetyPay gateway maps
-     * both through this single path too (`titleResponse` carries the message
-     * instead of "Ok"). Not guessed into a second shape here.
+     * When `success === false` this delegates to buildLegacyErrorShape()
+     * instead -- see that method's docblock for the real legacy failure
+     * fixture that justifies it (SDK-1368 QA).
      *
      * @param  array $raw ms-transaction response body ({success, message, data})
      * @param  array $options the original caller-supplied options (may be empty)
      * @return object legacy-shaped response
      */
+    /**
+     * The real failure detail of a rejected ms-transaction request lives in
+     * `data.errors[].message` (a ValidationException shape: `{errorType,
+     * errorTypeDescription, errors: [{code, message}]}`), NOT in the top-level
+     * `message`, which is a generic, unhelpful "Transaction request" for every
+     * validation failure observed. Captured live in SDK-1368 QA: a split whose
+     * receivers did not add up to the transaction amount came back as
+     * `message: "Transaction request"` with the real reason ("El valor de la
+     * transaccion no concuerda a la suma del split.") only inside
+     * `data.errors[0].message`. Same gap the sibling Node SDK documents and
+     * handles in its own ms-transaction gateways.
+     *
+     * @param  array $raw ms-transaction response body
+     * @return string|null
+     */
+    public static function extractErrorMessage($raw)
+    {
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        if (isset($data["errors"]) && is_array($data["errors"]) && count($data["errors"]) > 0) {
+            $messages = array();
+            foreach ($data["errors"] as $error) {
+                if (is_array($error) && isset($error["message"]) && $error["message"] !== "") {
+                    $messages[] = $error["message"];
+                }
+            }
+            if (count($messages) > 0) {
+                return implode(" ", $messages);
+            }
+        }
+        return isset($raw["message"]) ? $raw["message"] : null;
+    }
+
+    /**
+     * Legacy-shaped failure response. The legacy apify SafetyPay endpoint does
+     * NOT return its rich transaction-shaped `data` on a rejection -- verified
+     * with a real paired call in SDK-1368 QA (same merchant, same options,
+     * both backends): legacy answered
+     *
+     *   {"success": false, "titleResponse": "Error",
+     *    "textResponse": "Algunos campos son invalidos, por favor corrija los
+     *                     errores y vuelva a intentarlo",
+     *    "lastAction": "validation transaction",
+     *    "data": {"totalErrors": 1,
+     *             "errors": [{"codError": "E033",
+     *                         "errorMessage": "La fecha de expiracion no debe
+     *                                          superar los 15 dias"}]}}
+     *
+     * so that exact shape is reproduced here, with ms-transaction's
+     * `errors[].code`/`errors[].message` feeding `codError`/`errorMessage`.
+     * Known value-level difference (not shape): legacy's `codError` is a real
+     * catalogued code ("E033") while ms-transaction sends a UUID -- passed
+     * through as-is rather than invented.
+     *
+     * Without this, a rejection was mapped through the success path and came
+     * back as a transaction-shaped object with every field null and the
+     * useless generic message -- looking like a partial transaction record
+     * when in fact nothing was ever created.
+     *
+     * A failure carrying no structured `errors` falls back to the same shape
+     * minus `data`, mirroring the sibling Node SDK's equivalent fallback.
+     *
+     * @param  array $raw ms-transaction response body
+     * @return object legacy-shaped error response
+     */
+    public static function buildLegacyErrorShape($raw)
+    {
+        $raw = is_array($raw) ? $raw : array();
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $errors = (isset($data["errors"]) && is_array($data["errors"])) ? $data["errors"] : array();
+
+        $mapped = array(
+            "success" => false,
+            "titleResponse" => "Error",
+            "textResponse" => self::extractErrorMessage($raw),
+            "lastAction" => "validation transaction",
+        );
+
+        if (count($errors) > 0) {
+            $mapped["data"] = array(
+                "totalErrors" => count($errors),
+                "errors" => array_map(function ($error) {
+                    return array(
+                        "codError" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
+                        "errorMessage" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
+                    );
+                }, $errors),
+            );
+        }
+
+        return json_decode(json_encode($mapped));
+    }
+
     public static function mapToLegacyShape($raw, $options = array())
     {
         $raw = is_array($raw) ? $raw : array();
         $options = is_array($options) ? $options : array();
 
-        $success = !empty($raw["success"]);
+        if (empty($raw["success"])) {
+            return self::buildLegacyErrorShape($raw);
+        }
+
+        $success = true;
         $message = isset($raw["message"]) ? $raw["message"] : null;
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
 
