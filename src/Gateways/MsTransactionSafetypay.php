@@ -224,7 +224,7 @@ class MsTransactionSafetypay
             "amount" => isset($options["value"]) ? $options["value"] : null,
             "tax" => isset($options["tax"]) ? $options["tax"] : 0,
             "ico" => isset($options["ico"]) ? $options["ico"] : 0,
-            "baseTax" => isset($options["tax_base"]) ? $options["tax_base"] : 0,
+            "taxBase" => isset($options["tax_base"]) ? $options["tax_base"] : 0,
             "currency" => isset($options["currency"]) ? $options["currency"] : "COP",
             "testMode" => $epayco->test === "TRUE" || $epayco->test === true,
             "uniqueTransactionPerBill" => isset($options["unique_transaction_per_bill"]) && $options["unique_transaction_per_bill"] === true,
