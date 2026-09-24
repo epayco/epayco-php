@@ -14,10 +14,10 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
+    const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
+    const BASE_URL_SECURE = "https://eks-rest-pagos-service.epayco.io";
     const ENTORNO = "/restpagos";
-    const BASE_URL_APIFY = "https://apify.epayco.co";
+    const BASE_URL_APIFY = "https://eks-apify-service.epayco.io";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
 
@@ -50,8 +50,12 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if ($method == "POST" && !is_null($data) && is_array($data) && !isset($data['extras_epayco'])) {
-            $data['extras_epayco'] = ["extra5" => "P42"];
+        if ($method == "POST" && !is_null($data) && is_array($data)) {
+            if (!isset($data['extras_epayco'])) {
+                $data['extras_epayco'] = ["extra5" => "P42"];
+            } elseif (is_array($data['extras_epayco']) && (!isset($data['extras_epayco']['extra5']) || $data['extras_epayco']['extra5'] === "")) {
+                $data['extras_epayco']['extra5'] = "P42";
+            }
         }
         /**
          * Switch traslate keys array petition in secure
