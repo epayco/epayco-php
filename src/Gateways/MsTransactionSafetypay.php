@@ -224,7 +224,7 @@ class MsTransactionSafetypay
             "amount" => isset($options["value"]) ? $options["value"] : null,
             "tax" => isset($options["tax"]) ? $options["tax"] : 0,
             "ico" => isset($options["ico"]) ? $options["ico"] : 0,
-            "baseTax" => isset($options["tax_base"]) ? $options["tax_base"] : 0,
+            "taxBase" => isset($options["tax_base"]) ? $options["tax_base"] : 0,
             "currency" => isset($options["currency"]) ? $options["currency"] : "COP",
             "testMode" => $epayco->test === "TRUE" || $epayco->test === true,
             "uniqueTransactionPerBill" => isset($options["unique_transaction_per_bill"]) && $options["unique_transaction_per_bill"] === true,
@@ -295,10 +295,87 @@ class MsTransactionSafetypay
      */
     public static function hasSplitPaymentOptions($options)
     {
+        $options = self::normalizeSplitOptions($options);
         return !empty($options["splitpayment"]) || !empty($options["split_app_id"]) ||
             !empty($options["split_merchant_id"]) || !empty($options["split_type"]) ||
             !empty($options["split_primary_receiver"]) || isset($options["split_primary_receiver_fee"]) ||
-            !empty($options["split_rule"]) || !empty($options["split_receivers"]);
+            !empty($options["split_rule"]) || !empty($options["split_receivers"]) ||
+            !empty($options["split_method"]);
+    }
+
+    /**
+     * Normalize the caller's split-payment options into the ONE flat shape this
+     * SDK's README documents for every payment method (its "Split Payments"
+     * sections): `splitpayment` plus the flat `split_*` keys at the root of
+     * $options, where `split_receivers` is either a JSON string or a plain array
+     * of `{id, total, iva, base_iva, fee}` receivers.
+     *
+     * That flat shape is the canonical, documented one and passes through
+     * untouched. What this adds is tolerance for the NESTED shape the sibling
+     * Python SDK documents and accepts -- everything bundled under one
+     * `split_payment` key:
+     *
+     *     "split_payment" => array(
+     *         "split_app_id" => "...", "split_merchant_id" => "...",
+     *         "split_primary_receiver" => "...",
+     *         "split_receivers" => array(array("id" => "...", "total" => "...")),
+     *     )
+     *
+     * Why this exists: before it, a caller sending the nested payload to this
+     * SDK got a transaction processed with NO split at all and NO error --
+     * hasSplitPaymentOptions() only looked at the flat keys, so the entire
+     * `split_payment` array was dropped and the response still came back
+     * `success: true`. That is the worst failure mode a dispersion can have: the
+     * money is not split and nothing says so. The exact mirror of this bug
+     * exists in the Python SDK, which reads only the nested shape and silently
+     * ignores the flat one -- found from both sides while migrating SafetyPay
+     * (SDK-1032 in Python) and Daviplata (SDK-1367 here).
+     *
+     * A flat key wins over its nested counterpart when both are present, so an
+     * explicit top-level value is never overridden by the bundle. `splitpayment`
+     * is set to "true" when lifting a bundle that did not carry it, since the
+     * nested convention has no equivalent flag.
+     *
+     * Idempotent -- running it over already-flat options is a no-op, which is
+     * why hasSplitPaymentOptions() and buildSplitPayment() can each call it
+     * without coordinating. Duplicated in each gateway rather than shared,
+     * following this SDK's existing convention of self-contained gateway
+     * classes.
+     *
+     * @param  array $options caller-supplied options, in either convention
+     * @return array options in the flat, README-documented convention
+     */
+    public static function normalizeSplitOptions($options)
+    {
+        if (!is_array($options)) {
+            return array();
+        }
+        if (!isset($options["split_payment"])) {
+            return $options;
+        }
+
+        $nested = $options["split_payment"];
+        if (is_string($nested)) {
+            $decoded = json_decode($nested, true);
+            $nested = is_array($decoded) ? $decoded : null;
+        }
+        if (!is_array($nested) || self::isList($nested)) {
+            // Not an associative bundle (empty, or a sequential list) -- there
+            // is nothing to lift, so leave $options exactly as it came.
+            return $options;
+        }
+
+        unset($options["split_payment"]);
+        foreach ($nested as $key => $value) {
+            if (!isset($options[$key])) {
+                $options[$key] = $value;
+            }
+        }
+        if (!isset($options["splitpayment"])) {
+            $options["splitpayment"] = "true";
+        }
+
+        return $options;
     }
 
     /**
@@ -339,19 +416,85 @@ class MsTransactionSafetypay
      */
     public static function buildSplitPayment($options)
     {
+        $options = self::normalizeSplitOptions($options);
         if (!self::hasSplitPaymentOptions($options)) {
             return null;
         }
         return array(
-            "splitMethod" => "multiple",
+            "splitMethod" => isset($options["split_method"]) ? $options["split_method"] : "multiple",
             "splitAppId" => isset($options["split_app_id"]) ? $options["split_app_id"] : null,
             "splitMerchantId" => isset($options["split_merchant_id"]) ? $options["split_merchant_id"] : null,
             "splitType" => isset($options["split_type"]) ? $options["split_type"] : "02",
             "splitPrimaryReceiver" => isset($options["split_primary_receiver"]) ? $options["split_primary_receiver"] : null,
             "splitPrimaryReceiverFee" => isset($options["split_primary_receiver_fee"]) ? $options["split_primary_receiver_fee"] : "0",
             "splitRule" => isset($options["split_rule"]) ? $options["split_rule"] : "multiple",
-            "splitReceivers" => self::parseSplitReceivers(isset($options["split_receivers"]) ? $options["split_receivers"] : null),
+            "splitReceivers" => self::normalizeSplitReceivers(
+                self::parseSplitReceivers(isset($options["split_receivers"]) ? $options["split_receivers"] : null)
+            ),
         );
+    }
+
+    /**
+     * Translate each receiver's tax-base key from the name this SDK's README
+     * documents (`base_iva`) to the one ms-transaction actually reads
+     * (`baseTax`), leaving every other receiver field exactly as the caller
+     * sent it (`id`, `total`, `iva`, `fee`).
+     *
+     * Verified live against pre-prod, and it is not cosmetic: ms-transaction
+     * validates PER RECEIVER that `iva + baseTax == total`. Sending the
+     * README's `base_iva` means the backend reads no base at all, treats it as
+     * 0, and rejects the whole transaction with
+     *
+     *     "La suma del iva y base iva no concuerda con el monto total por
+     *      receiver."
+     *
+     * so an integrator who follows the README verbatim cannot create a split
+     * with `iva > 0`. (With `iva` at 0 the check does not fire, which is why
+     * this went unnoticed in earlier QA runs -- they all used `iva: "0"`.) The
+     * same probe confirmed `baseTax` is the only accepted spelling: `base_iva`,
+     * `base_tax`, `baseIva` and `iva_base` were all rejected, `baseTax` was
+     * accepted.
+     *
+     * Deliberately scoped to the ms-transaction flow only. The legacy backend
+     * keeps receiving `base_iva` untouched -- Utils/key_lang.json passes
+     * `split_receivers` straight through, so the legacy contract the README
+     * documents stays exactly as it is and the opt-out path is unaffected.
+     *
+     * An explicit `baseTax` from the caller always wins, so callers already
+     * sending the backend's own spelling are untouched. `base_tax` and
+     * `baseIva` are accepted as aliases too, since both appear in the wild and
+     * neither is read by the backend.
+     *
+     * @param  array $receivers receivers already decoded by parseSplitReceivers
+     * @return array receivers with the tax base under `baseTax`
+     */
+    public static function normalizeSplitReceivers($receivers)
+    {
+        if (!is_array($receivers)) {
+            return array();
+        }
+
+        $aliases = array("base_iva", "base_tax", "baseIva");
+        $out = array();
+        foreach ($receivers as $key => $receiver) {
+            if (!is_array($receiver)) {
+                $out[$key] = $receiver;
+                continue;
+            }
+            if (!isset($receiver["baseTax"])) {
+                foreach ($aliases as $alias) {
+                    if (isset($receiver[$alias])) {
+                        $receiver["baseTax"] = $receiver[$alias];
+                        break;
+                    }
+                }
+            }
+            foreach ($aliases as $alias) {
+                unset($receiver[$alias]);
+            }
+            $out[$key] = $receiver;
+        }
+        return $out;
     }
 
     /**
