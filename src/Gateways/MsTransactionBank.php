@@ -150,11 +150,7 @@ class MsTransactionBank
             // for every legacy POST in this PHP SDK specifically -- NOT "P44",
             // which is the equivalent Node-SDK-specific marker used by that
             // sibling SDK's own lib/resources/index.js, and only correct there.
-            "extrasEpayco" => array_merge(
-                array("extra1" => "", "extra2" => "", "extra3" => ""),
-                (isset($options["extrasEpayco"]) && is_array($options["extrasEpayco"])) ? $options["extrasEpayco"] : array(),
-                array("extra5" => "P42")
-            ),
+            "extrasEpayco" => self::buildExtrasEpayco($options),
         );
 
         $splitPayment = self::buildSplitPayment($options);
@@ -181,6 +177,27 @@ class MsTransactionBank
             if (isset($options[$key])) {
                 $extras[$key] = $options[$key];
             }
+        }
+        return $extras;
+    }
+
+    /**
+     * Build the `extrasEpayco` object: the integrator's `extrasEpayco` values
+     * win, and extra5 falls back to the "P42" marker only when it was not sent
+     * (or was sent empty).
+     * Duplicated from MsTransactionCash -- see buildExtras()'s docblock.
+     *
+     * @param  array $options
+     * @return array
+     */
+    public static function buildExtrasEpayco($options)
+    {
+        $extras = array_merge(
+            array("extra1" => "", "extra2" => "", "extra3" => ""),
+            (isset($options["extrasEpayco"]) && is_array($options["extrasEpayco"])) ? $options["extrasEpayco"] : array()
+        );
+        if (!isset($extras["extra5"]) || $extras["extra5"] === "") {
+            $extras["extra5"] = "P42";
         }
         return $extras;
     }
