@@ -48,8 +48,11 @@ class Epayco
      * ms-transaction migration in the sibling Node/Python SDKs
      * (SDK-1352/SDK-1029/SDK-1030). Empty by default, i.e. every migrated
      * payment method (currently "cash", see SDK-1366 and Resources/Cash.php;
-     * and "bank", see SDK-1365 and Resources/Bank.php) uses the new backend
-     * unless explicitly opted out.
+     * "bank", see SDK-1365 and Resources/Bank.php; and "daviplata", see
+     * SDK-1367 and Resources/Daviplata.php) uses the new backend unless
+     * explicitly opted out. Note the opt-out only ever affects create(): the
+     * query methods added by those same migrations have no legacy counterpart
+     * to fall back to.
      * @var array
      */
     public $transactionMethods = array();
