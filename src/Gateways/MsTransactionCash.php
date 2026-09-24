@@ -572,6 +572,34 @@ class MsTransactionCash
     }
 
     /**
+     * El detalle real de un rechazo de ms-transaction vive en
+     * `data.errors[].message`, NO en el `message` de primer nivel, que es
+     * generico e inutil para el comercio ("Transaction request", "Error
+     * occurred type exception"). Mismo helper que MsTransactionBank y
+     * MsTransactionDaviplata ya tienen; duplicado aca en vez de compartirlo,
+     * siguiendo la convencion de gateways autocontenidos de este SDK.
+     *
+     * @param  array $raw cuerpo de la respuesta de ms-transaction
+     * @return string|null
+     */
+    public static function extractErrorMessage($raw)
+    {
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        if (isset($data["errors"]) && is_array($data["errors"]) && count($data["errors"]) > 0) {
+            $messages = array();
+            foreach ($data["errors"] as $error) {
+                if (is_array($error) && isset($error["message"]) && $error["message"] !== "") {
+                    $messages[] = $error["message"];
+                }
+            }
+            if (count($messages) > 0) {
+                return implode(" ", $messages);
+            }
+        }
+        return isset($raw["message"]) && $raw["message"] !== "" ? $raw["message"] : null;
+    }
+
+    /**
      * Map a ms-transaction field-validation error response into a
      * legacy-shaped error response, so callers see the same top-level
      * shape (`success`/`title_response`/`text_response`/`last_action`/`data`)
@@ -585,24 +613,40 @@ class MsTransactionCash
      */
     public static function legacyValidationErrorResponse($raw)
     {
+        $raw = is_array($raw) ? $raw : array();
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $errors = isset($data["errors"]) && is_array($data["errors"]) ? $data["errors"] : array();
+
+        // El mensaje real arriba, no el generico. El generico queda solo como
+        // ultimo recurso, cuando el backend no manda ningun detalle.
+        $texto = self::extractErrorMessage($raw);
+        if ($texto === null) {
+            $texto = "Algunos campos son obligatorios, corrija los errores e intente nuevamente";
+        }
 
         $mapped = array(
             "success" => false,
             "title_response" => "ERROR",
-            "text_response" => "Algunos campos son obligatorios, corrija los errores e intente nuevamente",
+            "text_response" => $texto,
             "last_action" => "validation data",
-            "data" => array(
+        );
+
+        // `data` solo cuando hay errores estructurados que poner ahi. Sin esto,
+        // un fallo sin `errors` devolvia `data: {totalErrors: 0, errors: []}`,
+        // que no aporta nada, o -- peor, por el enrutado viejo -- un objeto con
+        // forma de transaccion y todo en null. Mismo criterio que
+        // MsTransactionDaviplata::buildLegacyErrorShape().
+        if (count($errors) > 0) {
+            $mapped["data"] = array(
                 "totalErrors" => count($errors),
                 "errors" => array_map(function ($error) {
                     return array(
-                        "cod_error" => isset($error["code"]) ? $error["code"] : null,
-                        "error_message" => isset($error["message"]) ? $error["message"] : null,
+                        "cod_error" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
+                        "error_message" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
                     );
                 }, $errors),
-            ),
-        );
+            );
+        }
 
         return json_decode(json_encode($mapped));
     }
@@ -638,7 +682,21 @@ class MsTransactionCash
      */
     public static function mapToLegacyShape($raw, $options, $medio)
     {
-        if (self::isValidationError($raw)) {
+        // Cualquier respuesta con success false significa que NO se creo
+        // transaccion: se mapea por la ruta de error, no solo cuando el backend
+        // manda la forma de ValidationException (data.errorType). Antes solo se
+        // miraba isValidationError(), asi que un fallo sin `errors`
+        // estructurados (p.ej. "Error occurred type exception" cuando falta
+        // `value`) caia por la ruta de EXITO y volvia como un objeto con forma
+        // de transaccion y todos los campos en null, ademas de `last_action:
+        // "Crear pin <medio>"` -- pareciendo un registro parcial de transaccion
+        // cuando en realidad no se creo nada. Es el mismo bug que se corrigio en
+        // SDK-1368 para SafetyPay y que MsTransactionBank/MsTransactionDaviplata
+        // ya evitan. Los rechazos de NEGOCIO no entran aca: el backend los manda
+        // con success true y el detalle en `estado`/`respuesta` (p.ej. "Amount
+        // must be greater than 20000"), asi que siguen mapeandose por la ruta de
+        // exito con su transaccion real.
+        if (self::isValidationError($raw) || empty($raw["success"])) {
             return self::legacyValidationErrorResponse($raw);
         }
 
