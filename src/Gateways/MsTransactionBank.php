@@ -196,10 +196,87 @@ class MsTransactionBank
      */
     public static function hasSplitPaymentOptions($options)
     {
+        $options = self::normalizeSplitOptions($options);
         return !empty($options["splitpayment"]) || !empty($options["split_app_id"]) ||
             !empty($options["split_merchant_id"]) || !empty($options["split_type"]) ||
             !empty($options["split_primary_receiver"]) || isset($options["split_primary_receiver_fee"]) ||
-            !empty($options["split_rule"]) || !empty($options["split_receivers"]);
+            !empty($options["split_rule"]) || !empty($options["split_receivers"]) ||
+            !empty($options["split_method"]);
+    }
+
+    /**
+     * Normalize the caller's split-payment options into the ONE flat shape this
+     * SDK's README documents for every payment method (its "Split Payments"
+     * sections): `splitpayment` plus the flat `split_*` keys at the root of
+     * $options, where `split_receivers` is either a JSON string or a plain array
+     * of `{id, total, iva, base_iva, fee}` receivers.
+     *
+     * That flat shape is the canonical, documented one and passes through
+     * untouched. What this adds is tolerance for the NESTED shape the sibling
+     * Python SDK documents and accepts -- everything bundled under one
+     * `split_payment` key:
+     *
+     *     "split_payment" => array(
+     *         "split_app_id" => "...", "split_merchant_id" => "...",
+     *         "split_primary_receiver" => "...",
+     *         "split_receivers" => array(array("id" => "...", "total" => "...")),
+     *     )
+     *
+     * Why this exists: before it, a caller sending the nested payload to this
+     * SDK got a transaction processed with NO split at all and NO error --
+     * hasSplitPaymentOptions() only looked at the flat keys, so the entire
+     * `split_payment` array was dropped and the response still came back
+     * `success: true`. That is the worst failure mode a dispersion can have: the
+     * money is not split and nothing says so. The exact mirror of this bug
+     * exists in the Python SDK, which reads only the nested shape and silently
+     * ignores the flat one -- found from both sides while migrating SafetyPay
+     * (SDK-1032 in Python) and Daviplata (SDK-1367 here).
+     *
+     * A flat key wins over its nested counterpart when both are present, so an
+     * explicit top-level value is never overridden by the bundle. `splitpayment`
+     * is set to "true" when lifting a bundle that did not carry it, since the
+     * nested convention has no equivalent flag.
+     *
+     * Idempotent -- running it over already-flat options is a no-op, which is
+     * why hasSplitPaymentOptions() and buildSplitPayment() can each call it
+     * without coordinating. Duplicated in each gateway rather than shared,
+     * following this SDK's existing convention of self-contained gateway
+     * classes.
+     *
+     * @param  array $options caller-supplied options, in either convention
+     * @return array options in the flat, README-documented convention
+     */
+    public static function normalizeSplitOptions($options)
+    {
+        if (!is_array($options)) {
+            return array();
+        }
+        if (!isset($options["split_payment"])) {
+            return $options;
+        }
+
+        $nested = $options["split_payment"];
+        if (is_string($nested)) {
+            $decoded = json_decode($nested, true);
+            $nested = is_array($decoded) ? $decoded : null;
+        }
+        if (!is_array($nested) || self::isList($nested)) {
+            // Not an associative bundle (empty, or a sequential list) -- there
+            // is nothing to lift, so leave $options exactly as it came.
+            return $options;
+        }
+
+        unset($options["split_payment"]);
+        foreach ($nested as $key => $value) {
+            if (!isset($options[$key])) {
+                $options[$key] = $value;
+            }
+        }
+        if (!isset($options["splitpayment"])) {
+            $options["splitpayment"] = "true";
+        }
+
+        return $options;
     }
 
     /**
@@ -241,11 +318,12 @@ class MsTransactionBank
      */
     public static function buildSplitPayment($options)
     {
+        $options = self::normalizeSplitOptions($options);
         if (!self::hasSplitPaymentOptions($options)) {
             return null;
         }
         return array(
-            "splitMethod" => "multiple",
+            "splitMethod" => isset($options["split_method"]) ? $options["split_method"] : "multiple",
             "splitAppId" => isset($options["split_app_id"]) ? $options["split_app_id"] : null,
             "splitMerchantId" => isset($options["split_merchant_id"]) ? $options["split_merchant_id"] : null,
             "splitType" => isset($options["split_type"]) ? $options["split_type"] : "02",
