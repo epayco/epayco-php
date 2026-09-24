@@ -133,11 +133,7 @@ class MsTransactionCash
             // auto-injects (data['extras_epayco'] = ['extra5' => 'P42']) for every
             // legacy POST, so ePayco's backend keeps identifying this SDK's traffic
             // the same way after the migration.
-            "extrasEpayco" => array_merge(
-                array("extra1" => "", "extra2" => "", "extra3" => ""),
-                (isset($options["extrasEpayco"]) && is_array($options["extrasEpayco"])) ? $options["extrasEpayco"] : array(),
-                array("extra5" => "P42")
-            ),
+            "extrasEpayco" => self::buildExtrasEpayco($options),
         );
 
         $splitPayment = self::buildSplitPayment($options);
@@ -162,6 +158,26 @@ class MsTransactionCash
             if (isset($options[$key])) {
                 $extras[$key] = $options[$key];
             }
+        }
+        return $extras;
+    }
+
+    /**
+     * Build the `extrasEpayco` object: the integrator's `extrasEpayco` values
+     * win, and extra5 falls back to the "P42" marker only when it was not sent
+     * (or was sent empty).
+     *
+     * @param  array $options
+     * @return array
+     */
+    public static function buildExtrasEpayco($options)
+    {
+        $extras = array_merge(
+            array("extra1" => "", "extra2" => "", "extra3" => ""),
+            (isset($options["extrasEpayco"]) && is_array($options["extrasEpayco"])) ? $options["extrasEpayco"] : array()
+        );
+        if (!isset($extras["extra5"]) || $extras["extra5"] === "") {
+            $extras["extra5"] = "P42";
         }
         return $extras;
     }
