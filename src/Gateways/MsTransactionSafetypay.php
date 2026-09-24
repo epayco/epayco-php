@@ -428,8 +428,73 @@ class MsTransactionSafetypay
             "splitPrimaryReceiver" => isset($options["split_primary_receiver"]) ? $options["split_primary_receiver"] : null,
             "splitPrimaryReceiverFee" => isset($options["split_primary_receiver_fee"]) ? $options["split_primary_receiver_fee"] : "0",
             "splitRule" => isset($options["split_rule"]) ? $options["split_rule"] : "multiple",
-            "splitReceivers" => self::parseSplitReceivers(isset($options["split_receivers"]) ? $options["split_receivers"] : null),
+            "splitReceivers" => self::normalizeSplitReceivers(
+                self::parseSplitReceivers(isset($options["split_receivers"]) ? $options["split_receivers"] : null)
+            ),
         );
+    }
+
+    /**
+     * Translate each receiver's tax-base key from the name this SDK's README
+     * documents (`base_iva`) to the one ms-transaction actually reads
+     * (`baseTax`), leaving every other receiver field exactly as the caller
+     * sent it (`id`, `total`, `iva`, `fee`).
+     *
+     * Verified live against pre-prod, and it is not cosmetic: ms-transaction
+     * validates PER RECEIVER that `iva + baseTax == total`. Sending the
+     * README's `base_iva` means the backend reads no base at all, treats it as
+     * 0, and rejects the whole transaction with
+     *
+     *     "La suma del iva y base iva no concuerda con el monto total por
+     *      receiver."
+     *
+     * so an integrator who follows the README verbatim cannot create a split
+     * with `iva > 0`. (With `iva` at 0 the check does not fire, which is why
+     * this went unnoticed in earlier QA runs -- they all used `iva: "0"`.) The
+     * same probe confirmed `baseTax` is the only accepted spelling: `base_iva`,
+     * `base_tax`, `baseIva` and `iva_base` were all rejected, `baseTax` was
+     * accepted.
+     *
+     * Deliberately scoped to the ms-transaction flow only. The legacy backend
+     * keeps receiving `base_iva` untouched -- Utils/key_lang.json passes
+     * `split_receivers` straight through, so the legacy contract the README
+     * documents stays exactly as it is and the opt-out path is unaffected.
+     *
+     * An explicit `baseTax` from the caller always wins, so callers already
+     * sending the backend's own spelling are untouched. `base_tax` and
+     * `baseIva` are accepted as aliases too, since both appear in the wild and
+     * neither is read by the backend.
+     *
+     * @param  array $receivers receivers already decoded by parseSplitReceivers
+     * @return array receivers with the tax base under `baseTax`
+     */
+    public static function normalizeSplitReceivers($receivers)
+    {
+        if (!is_array($receivers)) {
+            return array();
+        }
+
+        $aliases = array("base_iva", "base_tax", "baseIva");
+        $out = array();
+        foreach ($receivers as $key => $receiver) {
+            if (!is_array($receiver)) {
+                $out[$key] = $receiver;
+                continue;
+            }
+            if (!isset($receiver["baseTax"])) {
+                foreach ($aliases as $alias) {
+                    if (isset($receiver[$alias])) {
+                        $receiver["baseTax"] = $receiver[$alias];
+                        break;
+                    }
+                }
+            }
+            foreach ($aliases as $alias) {
+                unset($receiver[$alias]);
+            }
+            $out[$key] = $receiver;
+        }
+        return $out;
     }
 
     /**
