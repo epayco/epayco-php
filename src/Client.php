@@ -50,8 +50,12 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if ($method == "POST" && !is_null($data) && is_array($data) && !isset($data['extras_epayco'])) {
-            $data['extras_epayco'] = ["extra5" => "P42"];
+        if ($method == "POST" && !is_null($data) && is_array($data)) {
+            if (!isset($data['extras_epayco'])) {
+                $data['extras_epayco'] = ["extra5" => "P42"];
+            } elseif (is_array($data['extras_epayco']) && (!isset($data['extras_epayco']['extra5']) || $data['extras_epayco']['extra5'] === "")) {
+                $data['extras_epayco']['extra5'] = "P42";
+            }
         }
         /**
          * Switch traslate keys array petition in secure
