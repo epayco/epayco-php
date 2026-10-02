@@ -632,9 +632,11 @@ class MsTransactionBank
      *         `{totalerrores, errores}` shape; defaults to
      *         "validation transaction" (create). The query passes
      *         "update_transaction".
+     * @param  string|null $invoice the invoice the caller sent. Legacy's
+     *         create validation errors echo it back as `data.idfactura`.
      * @return object legacy-shaped error response (no fabricated transaction data)
      */
-    public static function buildLegacyErrorShape($raw, $plainAction = null, $structuredAction = null)
+    public static function buildLegacyErrorShape($raw, $plainAction = null, $structuredAction = null, $invoice = null)
     {
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : null;
         $hasStructuredErrors = $data && isset($data["errors"]) && is_array($data["errors"]) && count($data["errors"]) > 0;
@@ -655,6 +657,9 @@ class MsTransactionBank
                     }, $data["errors"]),
                 ),
             );
+            if ($invoice !== null) {
+                $mapped["data"]["idfactura"] = $invoice;
+            }
         } else {
             $mapped = array(
                 "success" => false,
@@ -710,15 +715,16 @@ class MsTransactionBank
      * false`), this returns legacy's own thinner failure shape instead of a
      * hybrid data object -- see buildLegacyErrorShape().
      *
-     * @param  array $raw ms-transaction response body ({success, message, data})
+     * @param  array       $raw ms-transaction response body ({success, message, data})
+     * @param  string|null $invoice the invoice the caller sent (echoed as `data.idfactura` in validation errors)
      * @return object legacy-shaped response
      */
-    public static function mapToLegacyShape($raw)
+    public static function mapToLegacyShape($raw, $invoice = null)
     {
         $raw = is_array($raw) ? $raw : array();
 
         if (empty($raw["success"])) {
-            return self::buildLegacyErrorShape($raw, "Ingresar pago debito Pse");
+            return self::buildLegacyErrorShape($raw, "Ingresar pago debito Pse", null, $invoice);
         }
 
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
@@ -909,7 +915,7 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 106);
         }
 
-        return self::mapToLegacyShape($raw);
+        return self::mapToLegacyShape($raw, isset($options["invoice"]) ? $options["invoice"] : null);
     }
 
     /**
