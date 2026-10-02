@@ -92,34 +92,46 @@ class Daviplata extends Resource
     }
 
     /**
-     * Return data confirm.
+     * Confirm a Daviplata payment with the OTP the customer received
+     * (`ref_payco`, `id_session_token` and `otp`, see README.md).
      *
-     * DELIBERATELY NOT MIGRATED to ms-transaction in SDK-1367, and left
-     * byte-for-byte on the legacy apify /payment/confirm/daviplata endpoint.
-     * Two independent reasons:
+     * Goes through ms-transaction's finishTransaction operation
+     * (POST apiflow.epayco.io/payment/api/v1/transaction/finish) by default,
+     * like create(). A merchant that opts back into the legacy backend with
+     * `transactionMethods: ["daviplata"]` keeps confirming on the legacy apify
+     * /payment/confirm/daviplata endpoint, so a payment is always created and
+     * confirmed on the same backend.
      *
-     * - SDK-1367's scope is the create and query operations only.
-     * - ms-transaction's generic transactions endpoint has no equivalent
-     *   operation: confirming a Daviplata payment means submitting the OTP the
-     *   customer received for a specific payment session (the
-     *   `idSessionToken`/`tokenExpirationDate` create() returns), and the new
-     *   contract exposes nothing that accepts it.
+     * The response keeps the legacy confirm() shape -- a different `data` than
+     * create()'s, see MsTransactionDaviplata::mapConfirmToLegacyShape -- and,
+     * as the legacy did, a second confirm() of a payment that is no longer
+     * Pendiente answers an error instead of touching it (see
+     * MsTransactionDaviplata::confirmTransaction for why that guard matters).
      *
-     * The already-shipped Python SDK's own ms-transaction migration made the
-     * same call -- on its `develop` it migrated `create()`/`get()` to its
-     * ms-transaction gateway and left `confirm()` on
-     * `payment/confirm/daviplata` (epaycosdk/resources.py's `Daviplata`,
-     * lines 454-476) -- read from that source, not assumed.
-     *
-     * Consequence worth knowing when reading a confirm() response: its shape
-     * comes from the legacy backend as it always has, so it is NOT produced by
-     * MsTransactionDaviplata::mapToLegacyShape and does not have to match
-     * create()'s mapped shape field-for-field.
+     * The sibling Node and Python SDKs still confirm on the legacy endpoint:
+     * when they migrated create()/get() nobody had found finishTransaction in
+     * the ms-transaction contract.
      *
      * @param  object $options data
      * @return object
      */
     public function confirm($options = null)
+    {
+        if ($this->epayco->usesLegacyFlow('daviplata')) {
+            return $this->legacyConfirm($options);
+        }
+
+        return MsTransactionDaviplata::confirmTransaction($this->epayco, $options);
+    }
+
+    /**
+     * Legacy Daviplata confirmation, unchanged from the pre-migration
+     * implementation: the apify /payment/confirm/daviplata endpoint.
+     *
+     * @param  object $options data
+     * @return object
+     */
+    private function legacyConfirm($options)
     {
         return $this->request(
                 "POST",
