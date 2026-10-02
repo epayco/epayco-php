@@ -627,6 +627,13 @@ class MsTransactionCash
      * so the integrator sees what failed; legacy's generic text is only the
      * fallback when the backend sends no detail at all.
      *
+     * Compatibility: before SDK-1366 this method returned `data` as
+     * `{totalErrors, errors: [{cod_error, error_message}]}` (develop only, never
+     * tagged). Those keys are kept after the legacy ones, with the same
+     * content, so an integrator already reading them keeps working. Only
+     * `title_response` ("ERROR" -> "Error") and `last_action` ("validation
+     * data" -> "validation transaction") could not be kept both ways.
+     *
      * @param  array $raw ms-transaction response body
      * @return object
      */
@@ -656,14 +663,20 @@ class MsTransactionCash
         // forma de transaccion y todo en null. Mismo criterio que
         // MsTransactionDaviplata::buildLegacyErrorShape().
         if (count($errors) > 0) {
+            $errores = array();
+            $erroresAnteriores = array();
+            foreach ($errors as $error) {
+                $code = (is_array($error) && isset($error["code"])) ? $error["code"] : null;
+                $message = (is_array($error) && isset($error["message"])) ? $error["message"] : null;
+                $errores[] = array("codError" => $code, "errorMessage" => $message);
+                $erroresAnteriores[] = array("cod_error" => $code, "error_message" => $message);
+            }
             $mapped["data"] = array(
                 "totalerrores" => count($errors),
-                "errores" => array_map(function ($error) {
-                    return array(
-                        "codError" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
-                        "errorMessage" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
-                    );
-                }, $errors),
+                "errores" => $errores,
+                // Names used before SDK-1366, kept so existing readers don't break.
+                "totalErrors" => count($errors),
+                "errors" => $erroresAnteriores,
             );
         }
 
