@@ -24,43 +24,22 @@ use WpOrg\Requests\Requests;
  * own self-contained module ... on purpose, matching [msTransactionCash.js]'s
  * own note about being independently unit-testable and isolated from
  * Resource#request") -- every method here is a static, side-effect-free
- * helper besides the three that make actual HTTP calls: login(),
- * createTransaction() and getTransaction().
+ * helper besides the ones that make actual HTTP calls: login(),
+ * createTransaction(), getTransaction(), getBanks() and resolveIp().
  *
- * IMPORTANT, and the one thing that does NOT mirror MsTransactionCash: the
- * auth handshake. PSE does not use the OAuth2 client_credentials login
- * MsTransactionCash uses against apiflow.epayco.io/authentication/api/v2/login
- * -- it uses HTTP Basic auth (base64(apiKey:privateKey)) against
- * eks-apify-service.epayco.io/login (Epayco\Client::BASE_URL_APIFY, the same
- * host/constant Client::authentication()'s own $apify=true branch already
- * uses for Resources/Bank.php's still-legacy pseBank() listing), which
- * returns {token: "..."} directly (no {data: {token}} wrapper) -- verified
- * empirically in the sibling Node SDK's migration of this same flow
- * (SDK-1355, merchant 630339, bank code 1077).
+ * Auth mirrors MsTransactionCash::login(): OAuth2 client_credentials against
+ * apiflow.epayco.io/authentication/api/v2/login (SDK-1365 QA, BUG-04). The
+ * earlier Basic-auth login against eks-apify-service.epayco.io/login is no
+ * longer used.
  *
- * IMPORTANT for callers: both createTransaction() and getTransaction()
- * resolve to the exact same response shape the legacy
- * secure.payco.co/restpagos/pagos/debitos.json (create) /
- * .../pse/transactioninfomation.json (query) endpoints return today (see
- * mapToLegacyShape) -- SDK-1365 requires consumers of this SDK (e.g.
- * cms-backend-platforms) to see one consistent shape regardless of which
- * backend actually served the request, and regardless of whether they just
- * called create() or are polling get() for the same ref_payco afterwards.
- * getTransaction() reuses mapToLegacyShape() as-is (not a variant) --
- * verified field-by-field against a real paired pre-prod call (merchant
- * 630339, ref_payco 1000011709, bank code 1077): the GET response carries
- * the same field names create()'s raw response does (refPayco, invoice,
- * description, amount, tax, ico, taxBase, currency, status, response,
- * responseCode, authorization, receipt, date, extras, extrasEpayco,
- * paymentProviderData.cycle/ticketId/trazabilityCode), plus a handful of
- * extra fields GET carries that create()'s raw response doesn't
- * (subtotal, franchise, nameBank, city, testMode, ip, payerInformation) --
- * mapToLegacyShape() already ignores anything it doesn't explicitly map, so
- * these are silently and safely dropped, same as any other unmapped field.
- * `urlbanco` legitimately resolves to null on a GET response (no
- * `paymentProviderData.urlPayment` there -- the bank-redirect URL doesn't
- * apply once you're just checking status), which is the pre-existing
- * `isset()`-guarded behavior in mapToLegacyShape(), not special-cased here.
+ * IMPORTANT for callers: every public call resolves to the response shape
+ * the equivalent legacy endpoint returns today, so consumers of this SDK
+ * (e.g. cms-backend-platforms) see one consistent shape regardless of which
+ * backend served the request:
+ * - createTransaction(): legacy .../pagos/debitos.json (see mapToLegacyShape).
+ * - getTransaction(): legacy .../pse/transactioninfomation.json for a
+ *   transaction created by ms-transaction (see mapQueryToLegacyShape).
+ * - getBanks(): legacy pseBank() listing (see mapToLegacyShapeBanks).
  */
 class MsTransactionBank
 {
@@ -142,7 +121,7 @@ class MsTransactionBank
                 ? $options["method_confirmation"]
                 : (isset($options["metodoconfirmacion"]) ? $options["metodoconfirmacion"] : "GET"),
             "description" => isset($options["description"]) ? $options["description"] : null,
-            "integrationType" => array("tipo_checkout" => "smart_checkout", "modo_pago" => "pse"),
+            "integrationType" => array("tipo_checkout" => "api", "modo_pago" => "PSE"),
             "publicKey" => $epayco->api_key,
             "extras" => self::buildExtras($options),
             // extra5 "P42" mirrors the internal-tracking marker Client::request
@@ -506,19 +485,12 @@ class MsTransactionBank
     }
 
     /**
-     * Log in against the ms-transaction Basic-auth login endpoint and return
-     * the JWT to use as a Bearer token for both createTransaction() and
-     * getTransaction(). Not cached: mirrors MsTransactionCash::login() (the
-     * JWT is short-lived, so callers re-login per request) even though the
-     * handshake itself differs -- see this class' own docblock for why PSE
-     * uses Basic auth instead of MsTransactionCash's OAuth2
-     * client_credentials.
-     *
-     * Verified empirically in the sibling Node SDK's migration of this same
-     * flow (SDK-1355): responds with `{token: "..."}` directly, unlike
-     * MsTransactionCash::login()'s `{data: {token: "..."}}` (also tolerated
-     * here, defensively, the same way MsTransactionCash::login() tolerates
-     * both shapes).
+     * Log in against the ms-transaction OAuth2 endpoint and return the JWT
+     * to use as a Bearer token for createTransaction(), getTransaction() and
+     * getBanks(). Same flow as MsTransactionCash::login(): client_credentials
+     * against {baseUrlAuth}/authentication/api/v2/login, token in
+     * `data.token` (a bare `token` is tolerated too). Not cached: the JWT is
+     * short-lived, so callers re-login per request.
      *
      * @param  string $apiKey
      * @param  string $privateKey
@@ -527,10 +499,11 @@ class MsTransactionBank
      */
     public static function login($apiKey, $privateKey, $lang)
     {
-        $headers = array(
-            "Content-Type" => "application/json",
-            "Accept" => "application/json",
-            "Authorization" => "Basic " . base64_encode($apiKey . ":" . $privateKey),
+        $headers = array("Content-Type" => "application/json", "Accept" => "application/json");
+        $body = array(
+            "client_id" => $apiKey,
+            "client_secret" => $privateKey,
+            "grant_type" => "client_credentials",
         );
         $options = array(
             "timeout" => self::REQUEST_TIMEOUT,
@@ -538,7 +511,7 @@ class MsTransactionBank
         );
 
         try {
-            $response = Requests::post(self::baseUrlAuth() . "/login", $headers, json_encode(array()), $options);
+            $response = Requests::post(self::baseUrlAuth() . "/authentication/api/v2/login", $headers, json_encode($body), $options);
         } catch (\Exception $e) {
             throw new ErrorException($lang, 101);
         }
@@ -546,10 +519,10 @@ class MsTransactionBank
         $json = json_decode($response->body, true);
         $token = null;
         if (is_array($json)) {
-            if (isset($json["token"])) {
-                $token = $json["token"];
-            } elseif (isset($json["data"]["token"])) {
+            if (isset($json["data"]["token"])) {
                 $token = $json["data"]["token"];
+            } elseif (isset($json["token"])) {
+                $token = $json["token"];
             }
         }
 
@@ -597,6 +570,24 @@ class MsTransactionBank
     }
 
     /**
+     * Numeric string -> number ("0.00" -> 0, "1.50" -> 1.5); anything else is
+     * returned unchanged. The ms-transaction query returns `ico` as "0.00"
+     * while create returns 0 (SDK-1365 QA, BUG-08). Mirrors `_as_number` in
+     * the sibling Python SDK.
+     *
+     * @param  mixed $value
+     * @return mixed
+     */
+    public static function asNumber($value)
+    {
+        if (!is_string($value) || !is_numeric($value)) {
+            return $value;
+        }
+        $number = (float)$value;
+        return (floor($number) == $number && abs($number) < PHP_INT_MAX) ? (int)$number : $number;
+    }
+
+    /**
      * When ms-transaction rejects a request, the real failure detail lives in
      * `data.errors[].message` (a ValidationException shape: `{errorType,
      * errorTypeDescription, errors: [{code, message}]}`), not in the
@@ -637,9 +628,15 @@ class MsTransactionBank
      * @param  array       $raw ms-transaction response body ({success, message, data})
      * @param  string|null $plainAction last_action for the data-less shape;
      *         real paired example for PSE: "Ingresar pago debito Pse".
+     * @param  string|null $structuredAction last_action for the
+     *         `{totalerrores, errores}` shape; defaults to
+     *         "validation transaction" (create). The query passes
+     *         "update_transaction".
+     * @param  string|null $invoice the invoice the caller sent. Legacy's
+     *         create validation errors echo it back as `data.idfactura`.
      * @return object legacy-shaped error response (no fabricated transaction data)
      */
-    public static function buildLegacyErrorShape($raw, $plainAction = null)
+    public static function buildLegacyErrorShape($raw, $plainAction = null, $structuredAction = null, $invoice = null)
     {
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : null;
         $hasStructuredErrors = $data && isset($data["errors"]) && is_array($data["errors"]) && count($data["errors"]) > 0;
@@ -649,7 +646,7 @@ class MsTransactionBank
                 "success" => false,
                 "title_response" => "Error",
                 "text_response" => self::extractErrorMessage($raw),
-                "last_action" => "validation transaction",
+                "last_action" => $structuredAction ? $structuredAction : "validation transaction",
                 "data" => array(
                     "totalerrores" => count($data["errors"]),
                     "errores" => array_map(function ($error) {
@@ -660,6 +657,9 @@ class MsTransactionBank
                     }, $data["errors"]),
                 ),
             );
+            if ($invoice !== null) {
+                $mapped["data"]["idfactura"] = $invoice;
+            }
         } else {
             $mapped = array(
                 "success" => false,
@@ -673,34 +673,23 @@ class MsTransactionBank
     }
 
     /**
-     * Map a successful ms-transaction response into the exact response shape
-     * the legacy secure.payco.co/restpagos/pagos/debitos.json (create) /
-     * .../pse/transactioninfomation.json (query) endpoints return today (see
-     * Resources/Bank.php), so callers get the identical shape regardless of
-     * which backend actually served the request, AND regardless of whether
-     * they call createTransaction() or getTransaction() for the same
-     * ref_payco -- mirrors mapToLegacyShape() in the sibling Node SDK's
-     * msTransactionBank.js (SDK-1355), verified there field-by-field against
-     * a real paired pre-prod call (merchant 630339, bank code 1077), and
-     * verified again directly in this PHP SDK (SDK-1365 QA follow-up)
-     * against a real GET response for the same merchant/ref_payco -- same
-     * field names, so this single function (no GET-specific variant) is
-     * reused for both callers as-is. Any field present in a GET response but
-     * not a create() response (subtotal, franchise, nameBank, city,
-     * testMode, ip, payerInformation) is simply not read here and dropped,
-     * same as any other unmapped field.
+     * Map a ms-transaction create response into the exact response shape the
+     * legacy secure.payco.co/restpagos/pagos/debitos.json endpoint returns
+     * today (see Resources/Bank.php), so callers get the identical shape
+     * regardless of which backend actually served the request -- mirrors
+     * mapToLegacyShape() in the sibling Node SDK's msTransactionBank.js
+     * (SDK-1355), verified there field-by-field against a real paired
+     * pre-prod call (merchant 630339, bank code 1077). The query uses its own
+     * mapping (see mapQueryToLegacyShape).
      *
-     * Known gap, not addressed here: when ms-transaction rejects a GET
-     * outright (raw.success === false, e.g. ref_payco not found), this falls
-     * through to buildLegacyErrorShape()'s hardcoded `last_action:
-     * "Ingresar pago debito Pse"` ("enter debit PSE payment"), which is
-     * create()-specific wording -- no real failed-GET response was captured
-     * to verify what legacy's own query endpoint says instead, so this is
-     * left as-is rather than guessed.
+     * A `Rechazada`/`Fallida` transaction (cod_respuesta 2/4) comes back with
+     * `success: false`, `title_response: "FAIL"` and the PSE message in
+     * `text_response`, like legacy (SDK-1365 QA, BUG-03). ms-transaction does
+     * not return the provider's failure code, hence the fixed "FAIL".
      *
      * PII fields are deliberately NOT read from $options here (unlike
-     * MsTransactionCash::mapToLegacyShape): a real legacy PSE response has no
-     * `documento`/`nombres`/`apellidos`/`email`/`tipo_doc`/`direccion`/
+     * MsTransactionCash::mapToLegacyShape): a real legacy PSE create response
+     * has no `documento`/`nombres`/`apellidos`/`email`/`tipo_doc`/`direccion`/
      * `ind_pais` fields to mirror in the first place (confirmed by the same
      * Node SDK reference).
      *
@@ -715,7 +704,7 @@ class MsTransactionBank
      * value.
      *
      * Fields present in MsTransactionCash::mapToLegacyShape but NOT present
-     * in a real legacy PSE response (`banco`, `franquicia`,
+     * in a real legacy PSE create response (`banco`, `franquicia`,
      * `cc_network_response`, `pin`, `codigoproyecto`, `fechapago`,
      * `fechaexpiracion`, `factor_conversion`, `valor_pesos`, `tipo_doc`,
      * `documento`, `nombres`, `apellidos`, `email`, `direccion`,
@@ -726,25 +715,29 @@ class MsTransactionBank
      * false`), this returns legacy's own thinner failure shape instead of a
      * hybrid data object -- see buildLegacyErrorShape().
      *
-     * @param  array $raw ms-transaction response body ({success, message, data})
+     * @param  array       $raw ms-transaction response body ({success, message, data})
+     * @param  string|null $invoice the invoice the caller sent (echoed as `data.idfactura` in validation errors)
      * @return object legacy-shaped response
      */
-    public static function mapToLegacyShape($raw)
+    public static function mapToLegacyShape($raw, $invoice = null)
     {
         $raw = is_array($raw) ? $raw : array();
 
         if (empty($raw["success"])) {
-            return self::buildLegacyErrorShape($raw, "Ingresar pago debito Pse");
+            return self::buildLegacyErrorShape($raw, "Ingresar pago debito Pse", null, $invoice);
         }
 
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $providerData = isset($data["paymentProviderData"]) && is_array($data["paymentProviderData"]) ? $data["paymentProviderData"] : array();
         $extrasEpaycoNew = isset($data["extrasEpayco"]) && is_array($data["extrasEpayco"]) ? $data["extrasEpayco"] : array();
+        $codRespuesta = self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null);
+        $failed = $codRespuesta === 2 || $codRespuesta === 4;
+        $message = isset($raw["message"]) ? $raw["message"] : null;
 
         $mapped = array(
-            "success" => true,
-            "title_response" => "SUCCESS",
-            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "success" => !$failed,
+            "title_response" => $failed ? "FAIL" : "SUCCESS",
+            "text_response" => $failed ? (isset($data["response"]) ? $data["response"] : $message) : $message,
             "last_action" => "get bank url",
             "data" => array(
                 "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -752,15 +745,15 @@ class MsTransactionBank
                 "descripcion" => isset($data["description"]) ? $data["description"] : null,
                 "valor" => isset($data["amount"]) ? $data["amount"] : null,
                 "iva" => isset($data["tax"]) ? $data["tax"] : null,
-                "ico" => isset($data["ico"]) ? $data["ico"] : null,
+                "ico" => isset($data["ico"]) ? self::asNumber($data["ico"]) : null,
                 "baseiva" => isset($data["taxBase"]) ? $data["taxBase"] : null,
                 "moneda" => isset($data["currency"]) ? $data["currency"] : null,
                 "estado" => isset($data["status"]) ? $data["status"] : null,
                 "respuesta" => isset($data["response"]) ? $data["response"] : null,
-                "cod_respuesta" => self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null),
+                "cod_respuesta" => $codRespuesta,
                 "cod_error" => isset($data["responseCode"]) ? $data["responseCode"] : null,
                 "autorizacion" => isset($data["authorization"]) ? $data["authorization"] : null,
-                "ciudad" => "",
+                "ciudad" => isset($data["city"]) ? $data["city"] : "",
                 "recibo" => isset($data["receipt"]) ? $data["receipt"] : null,
                 "fecha" => isset($data["date"]) ? $data["date"] : null,
                 "urlbanco" => isset($providerData["urlPayment"]) ? $providerData["urlPayment"] : null,
@@ -770,6 +763,110 @@ class MsTransactionBank
                 "extras_epayco" => array("extra5" => isset($extrasEpaycoNew["extra5"]) ? $extrasEpaycoNew["extra5"] : null),
                 "ciclo" => isset($providerData["cycle"]) ? (string)$providerData["cycle"] : null,
             ),
+        );
+
+        return json_decode(json_encode($mapped));
+    }
+
+    /**
+     * Map a ms-transaction query response into the shape the legacy
+     * .../pse/transactioninfomation.json endpoint returns for a transaction
+     * created by ms-transaction (SDK-1365 QA, BUG-02): `title_response` "OK",
+     * `last_action` "update_transaction", and the legacy query's `data` keys
+     * in the legacy order. The payer fields come masked from ms-transaction,
+     * same as legacy returns them for these transactions.
+     *
+     * Errors (`raw.success === false`, e.g. ref_payco not found) keep
+     * buildLegacyErrorShape()'s shape and the backend message, with the
+     * query's `last_action` (BUG-05).
+     *
+     * @param  array $raw ms-transaction response body ({success, message, data})
+     * @return object legacy-shaped response
+     */
+    public static function mapQueryToLegacyShape($raw)
+    {
+        $raw = is_array($raw) ? $raw : array();
+
+        if (empty($raw["success"])) {
+            return self::buildLegacyErrorShape($raw, "update_transaction", "update_transaction");
+        }
+
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $payer = isset($data["payerInformation"]) && is_array($data["payerInformation"]) ? $data["payerInformation"] : array();
+        $extrasEpaycoNew = isset($data["extrasEpayco"]) && is_array($data["extrasEpayco"]) ? $data["extrasEpayco"] : array();
+        $responseCode = isset($data["responseCode"]) ? $data["responseCode"] : null;
+
+        $mapped = array(
+            "success" => true,
+            "title_response" => "OK",
+            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "last_action" => "update_transaction",
+            "data" => array(
+                "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
+                "factura" => isset($data["invoice"]) ? $data["invoice"] : null,
+                "descripcion" => isset($data["description"]) ? $data["description"] : null,
+                "valor" => isset($data["amount"]) ? $data["amount"] : null,
+                "iva" => isset($data["tax"]) ? $data["tax"] : null,
+                "ico" => isset($data["ico"]) ? self::asNumber($data["ico"]) : null,
+                "baseiva" => isset($data["taxBase"]) ? $data["taxBase"] : null,
+                "valorneto" => isset($data["subtotal"]) ? $data["subtotal"] : (isset($data["amount"]) ? $data["amount"] : null),
+                "moneda" => isset($data["currency"]) ? $data["currency"] : null,
+                "banco" => isset($data["nameBank"]) ? $data["nameBank"] : null,
+                "estado" => isset($data["status"]) ? $data["status"] : null,
+                "respuesta" => isset($data["response"]) ? $data["response"] : null,
+                "autorizacion" => isset($data["authorization"]) ? $data["authorization"] : null,
+                "recibo" => isset($data["receipt"]) ? $data["receipt"] : null,
+                "fecha" => isset($data["date"]) ? $data["date"] : null,
+                "franquicia" => isset($data["franchise"]) ? $data["franchise"] : null,
+                "cod_respuesta" => self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null),
+                "cod_error" => $responseCode,
+                "ip" => isset($data["ip"]) ? $data["ip"] : null,
+                "enpruebas" => isset($data["testMode"]) ? $data["testMode"] : null,
+                "tipo_doc" => isset($payer["documentType"]) ? $payer["documentType"] : null,
+                "documento" => isset($payer["document"]) ? $payer["document"] : null,
+                "nombres" => isset($payer["names"]) ? $payer["names"] : null,
+                "apellidos" => isset($payer["lastNames"]) ? $payer["lastNames"] : null,
+                "email" => isset($payer["email"]) ? $payer["email"] : null,
+                "ciudad" => isset($data["city"]) ? $data["city"] : "",
+                "direccion" => isset($payer["address"]) ? $payer["address"] : null,
+                "ind_pais" => null,
+                "country_card" => "",
+                "extras" => isset($data["extras"]) ? $data["extras"] : null,
+                // Constant in every legacy PSE query, whatever cod_error says.
+                "cc_network_response" => array("code" => "0000", "message" => "Franquicia no registrada"),
+                // Legacy echoes the stored extrasEpayco object as-is for these transactions.
+                "extras_epayco" => $extrasEpaycoNew ? $extrasEpaycoNew : array("extra5" => null),
+                "transactionID" => isset($data["authorization"]) ? $data["authorization"] : null,
+                "ticketId" => isset($data["receipt"]) ? (string)$data["receipt"] : null,
+            ),
+        );
+
+        return json_decode(json_encode($mapped));
+    }
+
+    /**
+     * Map a ms-transaction PSE-banks response into the legacy pseBank()
+     * shape. Mirrors mapToLegacyShapeBanks() in the sibling Node SDK's
+     * msTransactionBank.js: `data` (the bankCode/bankName list) passes
+     * through unchanged, and `enpruebas` (1 test, 2 production) comes from
+     * $test, since the response has no equivalent field.
+     *
+     * @param  array $raw ms-transaction response body ({success, message, data})
+     * @param  bool  $test whether the listing was requested in test mode
+     * @return object legacy-shaped response
+     */
+    public static function mapToLegacyShapeBanks($raw, $test)
+    {
+        $raw = is_array($raw) ? $raw : array();
+        $success = !empty($raw["success"]);
+
+        $mapped = array(
+            "success" => $success,
+            "title_response" => $success ? "Ok" : "Error",
+            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "last_action" => "Query Bancos",
+            "data" => isset($raw["data"]) ? $raw["data"] : null,
+            "enpruebas" => $test ? 1 : 2,
         );
 
         return json_decode(json_encode($mapped));
@@ -818,7 +915,7 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 106);
         }
 
-        return self::mapToLegacyShape($raw);
+        return self::mapToLegacyShape($raw, isset($options["invoice"]) ? $options["invoice"] : null);
     }
 
     /**
@@ -830,18 +927,16 @@ class MsTransactionBank
      * Jira description (`GET .../v1/pse/transactions?ref_payco=...`)
      * returned 404 in that same Node-SDK test and is deliberately NOT used.
      *
-     * Like createTransaction(), this remaps the response into the exact
-     * shape the legacy secure.payco.co/restpagos/pse/transactioninfomation.json
-     * endpoint returns today (see mapToLegacyShape) -- SDK-1365 QA follow-up
-     * found the GET response carries the same field names create()'s raw
-     * response does (see mapToLegacyShape's own docblock for the field-by-
-     * field verification), so mapToLegacyShape() is reused as-is here, not a
-     * GET-specific variant.
+     * The identifier is `ref_payco` (`data.ref_payco` from create), not the
+     * legacy `transactionID`; querying by `transactionID` needs the legacy
+     * flow (`transactionMethods: ["bank"]`). The response is remapped into
+     * the legacy .../pse/transactioninfomation.json shape (see
+     * mapQueryToLegacyShape).
      *
      * @param  object      $epayco the Epayco instance (api_key/private_key/test/lang)
      * @param  string|int  $refPayco must be a plain positive integer (see
      *         REF_PAYCO_REGEX)
-     * @return object legacy-shaped response (see mapToLegacyShape)
+     * @return object legacy-shaped response (see mapQueryToLegacyShape)
      */
     public static function getTransaction($epayco, $refPayco)
     {
@@ -872,7 +967,52 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 106);
         }
 
-        return self::mapToLegacyShape($raw);
+        return self::mapQueryToLegacyShape($raw);
+    }
+
+    /**
+     * List the PSE banks against ms-transaction
+     * (GET {baseUrl}/payment/api/v1/pse/banks/{publicKey}), with the Bearer
+     * token from login(). Mirrors getBanks() in the sibling Node SDK's
+     * msTransactionBank.js (SDK-1365 QA, BUG-06: the legacy apify listing
+     * fails in pre-prod).
+     *
+     * @param  object    $epayco the Epayco instance (api_key/private_key/test/lang)
+     * @param  bool|null $testMode test flag for `enpruebas`; null uses the
+     *         client's `test`
+     * @return object legacy-shaped response (see mapToLegacyShapeBanks)
+     */
+    public static function getBanks($epayco, $testMode = null)
+    {
+        if ($testMode === null) {
+            $test = $epayco->test === "TRUE" || $epayco->test === true;
+        } else {
+            $test = (bool)$testMode;
+        }
+
+        $token = self::login($epayco->api_key, $epayco->private_key, $epayco->lang);
+
+        $headers = array(
+            "Accept" => "application/json",
+            "Authorization" => "Bearer " . $token,
+        );
+        $requestOptions = array(
+            "timeout" => self::REQUEST_TIMEOUT,
+            "connect_timeout" => self::REQUEST_TIMEOUT,
+        );
+
+        try {
+            $response = Requests::get(self::baseUrl() . "/payment/api/v1/pse/banks/" . rawurlencode((string)$epayco->api_key), $headers, $requestOptions);
+        } catch (\Exception $e) {
+            throw new ErrorException($epayco->lang, 101);
+        }
+
+        $raw = json_decode($response->body, true);
+        if (!is_array($raw)) {
+            throw new ErrorException($epayco->lang, 106);
+        }
+
+        return self::mapToLegacyShapeBanks($raw, $test);
     }
 
     /**
@@ -911,24 +1051,16 @@ class MsTransactionBank
     }
 
     /**
-     * Base host for the PSE-specific Basic-auth login endpoint. Deliberately
-     * a DIFFERENT env var (`BASE_URL_MS_TRANSACTION_AUTH_PSE`) from
-     * MsTransactionCash::baseUrlAuth()'s `BASE_URL_MS_TRANSACTION_AUTH`, even
-     * though today's defaults happen to be the two hosts this SDK already
-     * has separate constants/knobs for (Client::BASE_URL_APIFY here vs.
-     * apiflow.epayco.io there) -- this class' own auth handshake is a
-     * genuinely different endpoint (Basic auth, not OAuth2
-     * client_credentials), so an operator overriding one must not
-     * accidentally redirect the other. Defaults to Client::BASE_URL_APIFY
-     * (not a duplicated literal) since it's the exact same host/constant
-     * Client::authentication()'s own $apify=true branch already uses for
-     * Resources/Bank.php's still-legacy pseBank() listing.
+     * Base host for the ms-transaction auth API. Same env var
+     * (`BASE_URL_MS_TRANSACTION_AUTH`) and default host as
+     * MsTransactionCash::baseUrlAuth(), since both gateways use the same
+     * OAuth2 login.
      *
      * @return string
      */
     public static function baseUrlAuth()
     {
-        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH_PSE");
-        return $env ? $env : Client::BASE_URL_APIFY;
+        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH");
+        return $env ? $env : "https://apiflow.epayco.io";
     }
 }
