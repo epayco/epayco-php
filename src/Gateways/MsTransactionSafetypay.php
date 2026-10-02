@@ -775,6 +775,14 @@ class MsTransactionSafetypay
      * A failure carrying no structured `errors` falls back to the same shape
      * minus `data`, mirroring the sibling Node SDK's equivalent fallback.
      *
+     * `lastAction` follows legacy's two variants (verified against the real
+     * legacy flow, pre-prod, 2026-10-02): "validation data" when a required
+     * field is missing (legacy A001, e.g. "El campo 'document' es requerido")
+     * and "validation transaction" when a value is invalid (E014 minimum
+     * amount, E024 expiration date). ms-transaction does not send legacy's
+     * codes, so a missing field is recognised by its message ("El campo
+     * document es obligatorio.").
+     *
      * @param  array $raw ms-transaction response body
      * @return object legacy-shaped error response
      */
@@ -784,11 +792,19 @@ class MsTransactionSafetypay
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $errors = (isset($data["errors"]) && is_array($data["errors"])) ? $data["errors"] : array();
 
+        $missingField = false;
+        foreach ($errors as $error) {
+            if (is_array($error) && isset($error["message"]) && preg_match('/\bcampo\b.*\bes (obligatori|requerid)/i', (string)$error["message"])) {
+                $missingField = true;
+                break;
+            }
+        }
+
         $mapped = array(
             "success" => false,
             "titleResponse" => "Error",
             "textResponse" => self::extractErrorMessage($raw),
-            "lastAction" => "validation transaction",
+            "lastAction" => $missingField ? "validation data" : "validation transaction",
         );
 
         if (count($errors) > 0) {
@@ -806,6 +822,21 @@ class MsTransactionSafetypay
         return json_decode(json_encode($mapped));
     }
 
+    /**
+     * Map a ms-transaction create response into the camelCase shape the legacy
+     * apify SafetyPay endpoint returns.
+     *
+     * A `Rechazada`/`Fallida` transaction comes back with `success: false`,
+     * `titleResponse: "FAIL"` and the backend's reason (`data.response`) in
+     * `textResponse`, with `data` complete: ms-transaction did create it (it has
+     * a `refPayco`). Same rule as PSE and Cash (ADR-002); e.g. a SafetyPay
+     * charge without `email` is created as Fallida ("Unknown error occurred").
+     * Any other status keeps `success: true` / "Ok".
+     *
+     * @param  array $raw ms-transaction response body
+     * @param  array $options the original caller-supplied options
+     * @return object legacy-shaped response
+     */
     public static function mapToLegacyShape($raw, $options = array())
     {
         $raw = is_array($raw) ? $raw : array();
@@ -815,9 +846,10 @@ class MsTransactionSafetypay
             return self::buildLegacyErrorShape($raw);
         }
 
-        $success = true;
         $message = isset($raw["message"]) ? $raw["message"] : null;
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $status = isset($data["status"]) ? strtolower(trim((string)$data["status"])) : "";
+        $failed = $status === "fallida" || $status === "rechazada";
 
         $providerData = isset($data["paymentProviderData"]) ? $data["paymentProviderData"] : null;
         if (!is_array($providerData) || self::isList($providerData)) {
@@ -835,9 +867,9 @@ class MsTransactionSafetypay
         }
 
         $mapped = array(
-            "success" => $success,
-            "titleResponse" => $success ? "Ok" : ($message !== null ? $message : "Error"),
-            "textResponse" => $message,
+            "success" => !$failed,
+            "titleResponse" => $failed ? "FAIL" : "Ok",
+            "textResponse" => $failed ? (isset($data["response"]) && $data["response"] !== "" ? $data["response"] : $message) : $message,
             "lastAction" => "Envio Transaction Safetypay",
             "data" => array(
                 "refPayco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
