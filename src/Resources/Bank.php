@@ -11,10 +11,34 @@ use Epayco\Gateways\MsTransactionBank;
 class Bank extends Resource
 {
     /**
-     * Return list all banks
+     * Return list all banks.
+     *
+     * As of SDK-1365, this lists the PSE banks through ms-transaction
+     * (apiflow.epayco.io) by default -- see
+     * Epayco\Gateways\MsTransactionBank::getBanks. Same
+     * `transactionMethods: ["bank"]` opt-out as create() below applies here
+     * too.
+     *
+     * @param  bool|null $testMode true/false, or null to use the client's `test`
      * @return object
      */
     public function pseBank($testMode = null)
+    {
+        if ($this->epayco->usesLegacyFlow('bank')) {
+            return $this->legacyPseBank($testMode);
+        }
+
+        return MsTransactionBank::getBanks($this->epayco, $testMode);
+    }
+
+    /**
+     * Legacy PSE bank listing, unchanged from the pre-SDK-1365
+     * implementation (apify /payment/pse/banks).
+     *
+     * @param  bool|null $testMode
+     * @return object
+     */
+    private function legacyPseBank($testMode)
     {
         if ($testMode === null) {
             $test = $this->epayco->test === "TRUE" || $this->epayco->test === true;
@@ -100,12 +124,11 @@ class Bank extends Resource
      * `transactionMethods: ["bank"]` opt-out as create() above applies here
      * too.
      *
-     * Like create(), this reshapes the new backend's response into the same
-     * legacy shape (see MsTransactionBank::getTransaction's own docblock --
-     * verified field-by-field against a real GET response, SDK-1365 QA
-     * follow-up).
+     * The new flow queries by `ref_payco` (`data.ref_payco` from create);
+     * querying by `transactionID` needs the legacy flow. The response keeps
+     * the legacy query shape (see MsTransactionBank::mapQueryToLegacyShape).
      *
-     * @param  String $uid id transaction (ref_payco)
+     * @param  String $uid ref_payco (new flow) or transactionID (legacy flow)
      * @return object
      */
     public function get($uid = null)

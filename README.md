@@ -249,6 +249,8 @@ $sub = $epayco->subscriptions->charge(array(
 
 ### PSE
 
+PSE (bank listing, create and retrieve) goes through ms-transaction by default. To keep the legacy flow, pass `"transactionMethods" => array("bank")` to the `Epayco\Epayco` constructor.
+
 #### Listar bancos
 
 ```php
@@ -296,8 +298,12 @@ $pse = $epayco->bank->create(array(
 #### Retrieve
 
 ```php
-$pse = $epayco->bank->get("ticketId");
+$pse = $epayco->bank->get("ref_payco");
 ```
+
+Note: the default flow queries by `ref_payco` (`data.ref_payco` from the create response). To query by `transactionID`, use the legacy flow (`"transactionMethods" => array("bank")`).
+
+The `ref_payco` received in the `url_response` redirect comes from the buyer's browser: check that it belongs to one of your own orders before querying it or showing its data.
 
 #### Split Payments
 
