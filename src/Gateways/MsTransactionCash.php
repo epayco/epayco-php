@@ -616,13 +616,16 @@ class MsTransactionCash
     }
 
     /**
-     * Map a ms-transaction field-validation error response into a
-     * legacy-shaped error response, so callers see the same top-level
-     * shape (`success`/`title_response`/`text_response`/`last_action`/`data`)
-     * regardless of which kind of error was returned. Best-effort (not
-     * verified against a real legacy validation-error response for this
-     * SDK specifically), mirroring the equivalent best-effort mapping
-     * already in the Python migration of this same flow.
+     * Map a ms-transaction field-validation error response into the shape the
+     * legacy endpoint returns for a failed validation (verified against the
+     * real legacy PHP flow, pre-prod, 2026-10-02): `success: false`,
+     * `title_response` "Error", `last_action` "validation transaction" and a
+     * thin `data` of `{totalerrores, errores: [{codError, errorMessage}]}`
+     * (no `idfactura`), in that envelope order.
+     *
+     * `text_response` keeps the backend's own detail (extractErrorMessage()),
+     * so the integrator sees what failed; legacy's generic text is only the
+     * fallback when the backend sends no detail at all.
      *
      * @param  array $raw ms-transaction response body
      * @return object
@@ -633,32 +636,32 @@ class MsTransactionCash
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $errors = isset($data["errors"]) && is_array($data["errors"]) ? $data["errors"] : array();
 
-        // El mensaje real arriba, no el generico. El generico queda solo como
-        // ultimo recurso, cuando el backend no manda ningun detalle.
+        // El mensaje real arriba, no el generico. El generico (el del legacy)
+        // queda solo como ultimo recurso, cuando el backend no manda detalle.
         $texto = self::extractErrorMessage($raw);
         if ($texto === null) {
-            $texto = "Algunos campos son obligatorios, corrija los errores e intente nuevamente";
+            $texto = "Algunos campos son invalidos, por favor corrija los errores y vuelva a intentarlo";
         }
 
         $mapped = array(
             "success" => false,
-            "title_response" => "ERROR",
+            "title_response" => "Error",
             "text_response" => $texto,
-            "last_action" => "validation data",
+            "last_action" => "validation transaction",
         );
 
         // `data` solo cuando hay errores estructurados que poner ahi. Sin esto,
-        // un fallo sin `errors` devolvia `data: {totalErrors: 0, errors: []}`,
+        // un fallo sin `errors` devolvia `data: {totalerrores: 0, errores: []}`,
         // que no aporta nada, o -- peor, por el enrutado viejo -- un objeto con
         // forma de transaccion y todo en null. Mismo criterio que
         // MsTransactionDaviplata::buildLegacyErrorShape().
         if (count($errors) > 0) {
             $mapped["data"] = array(
-                "totalErrors" => count($errors),
-                "errors" => array_map(function ($error) {
+                "totalerrores" => count($errors),
+                "errores" => array_map(function ($error) {
                     return array(
-                        "cod_error" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
-                        "error_message" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
+                        "codError" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
+                        "errorMessage" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
                     );
                 }, $errors),
             );
@@ -685,6 +688,15 @@ class MsTransactionCash
      * that lines up with legacy's separate `cod_error` field instead, mapped
      * below).
      *
+     * A `Rechazada`/`Fallida` transaction (cod_respuesta 2/4) comes back with
+     * `success: false`, `title_response: "FAIL"` and the backend's reason
+     * (`data.response`) in `text_response`, like legacy (SDK-1366 QA); `data`
+     * stays complete, since ms-transaction did create the transaction (it has
+     * a `ref_payco`). Any other status keeps `success: true` / "SUCCESS".
+     *
+     * `valorneto` is the amount without tax (`data.subtotal`), like legacy
+     * (25000 of 29750); it falls back to `data.amount` when not sent.
+     *
      * `cc_network_response` is included below despite having no equivalent
      * field in the ms-transaction response, mirroring what the Node
      * migration verified empirically for `efecty`'s success path: a fixed
@@ -709,23 +721,25 @@ class MsTransactionCash
         // cuando en realidad no se creo nada. Es el mismo bug que se corrigio en
         // SDK-1368 para SafetyPay y que MsTransactionBank/MsTransactionDaviplata
         // ya evitan. Los rechazos de NEGOCIO no entran aca: el backend los manda
-        // con success true y el detalle en `estado`/`respuesta` (p.ej. "Amount
-        // must be greater than 20000"), asi que siguen mapeandose por la ruta de
-        // exito con su transaccion real.
+        // con success true y la transaccion ya creada (`status` Fallida/Rechazada,
+        // p.ej. "Amount must be greater than 20000"); se mapean mas abajo, con
+        // success false como el legacy.
         if (self::isValidationError($raw) || empty($raw["success"])) {
             return self::legacyValidationErrorResponse($raw);
         }
 
         $options = is_array($options) ? $options : array();
-        $success = !empty($raw["success"]);
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $providerData = isset($data["paymentProviderData"]) && is_array($data["paymentProviderData"]) ? $data["paymentProviderData"] : array();
         $extrasEpaycoNew = isset($data["extrasEpayco"]) && is_array($data["extrasEpayco"]) ? $data["extrasEpayco"] : array();
+        $codRespuesta = self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null);
+        $failed = $codRespuesta === 2 || $codRespuesta === 4;
+        $message = isset($raw["message"]) ? $raw["message"] : null;
 
         $mapped = array(
-            "success" => $success,
-            "title_response" => $success ? "SUCCESS" : "ERROR",
-            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "success" => !$failed,
+            "title_response" => $failed ? "FAIL" : "SUCCESS",
+            "text_response" => $failed ? (isset($data["response"]) ? $data["response"] : $message) : $message,
             "last_action" => "Crear pin " . $medio,
             "data" => array(
                 "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -735,7 +749,7 @@ class MsTransactionCash
                 "iva" => isset($data["tax"]) ? $data["tax"] : null,
                 "ico" => isset($data["ico"]) ? $data["ico"] : null,
                 "baseiva" => isset($data["taxBase"]) ? $data["taxBase"] : null,
-                "valorneto" => isset($data["amount"]) ? $data["amount"] : null,
+                "valorneto" => isset($data["subtotal"]) ? $data["subtotal"] : (isset($data["amount"]) ? $data["amount"] : null),
                 "moneda" => isset($data["currency"]) ? $data["currency"] : null,
                 "banco" => strtoupper($medio),
                 "estado" => isset($data["status"]) ? $data["status"] : null,
@@ -744,7 +758,7 @@ class MsTransactionCash
                 "recibo" => isset($data["receipt"]) ? $data["receipt"] : null,
                 "fecha" => isset($data["date"]) ? $data["date"] : null,
                 "franquicia" => isset($data["franchise"]) ? $data["franchise"] : null,
-                "cod_respuesta" => self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null),
+                "cod_respuesta" => $codRespuesta,
                 "cod_error" => isset($data["responseCode"]) ? $data["responseCode"] : null,
                 "ip" => isset($data["ip"]) ? $data["ip"] : null,
                 "enpruebas" => isset($data["testMode"]) ? $data["testMode"] : null,
