@@ -121,7 +121,7 @@ class MsTransactionBank
                 ? $options["method_confirmation"]
                 : (isset($options["metodoconfirmacion"]) ? $options["metodoconfirmacion"] : "GET"),
             "description" => isset($options["description"]) ? $options["description"] : null,
-            "integrationType" => array("tipo_checkout" => "onpage", "modo_pago" => "PSE"),
+            "integrationType" => array("tipo_checkout" => "api", "modo_pago" => "PSE"),
             "publicKey" => $epayco->api_key,
             "extras" => self::buildExtras($options),
             // extra5 "P42" mirrors the internal-tracking marker Client::request
