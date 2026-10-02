@@ -531,6 +531,10 @@ $pay = $epayco->daviplata->confirm(array(
 ));
 ```
 
+The OTP expires at `tokenExpirationDate` (from the create response). Call `confirm()` once per payment: confirming a
+payment that is no longer pending returns an error without sending the OTP again, but two `confirm()` calls running at
+the same time for the same payment are not protected (for example, a double click), so do not retry it concurrently.
+
 ### Safetypay
 
 #### Create 
