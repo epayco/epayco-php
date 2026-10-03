@@ -109,11 +109,37 @@ class Cash extends Resource
     }
 
     /**
-     * Return data transaction
-     * @param  String $uid id transaction
+     * Return data transaction (query a cash transaction by its ref_payco).
+     *
+     * Goes through ms-transaction (GET apiflow.epayco.io/payment/api/v1/
+     * transactions/{refPayco}) by default, like create(), and answers the
+     * same `x_*` shape the legacy /restpagos/transaction/response.json query
+     * returns -- see Epayco\Gateways\MsTransactionCash::mapQueryToLegacyShape
+     * for the fields ms-transaction cannot fill (`x_signature`, `x_business`,
+     * the payer's phones). A merchant that opts back into the legacy backend
+     * with `transactionMethods: ["cash"]` keeps querying the legacy endpoint,
+     * which still returns all of them.
+     * SDK-1366 QA, BUG-01.
+     *
+     * @param  String $uid ref_payco
      * @return object
      */
     public function transaction($uid = null)
+    {
+        if ($this->epayco->usesLegacyFlow('cash')) {
+            return $this->legacyTransaction($uid);
+        }
+
+        return MsTransactionCash::getTransaction($this->epayco, $uid);
+    }
+
+    /**
+     * Legacy cash query, unchanged: /restpagos/transaction/response.json.
+     *
+     * @param  String $uid ref_payco
+     * @return object
+     */
+    private function legacyTransaction($uid)
     {
         return $this->request(
                 "GET",

@@ -223,7 +223,7 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Bucket the legacy extra1..extra6 options into the `extras` object the new
+     * Bucket the legacy extra1..extra10 options into the `extras` object the new
      * contract expects. Duplicated from MsTransactionBank rather than shared,
      * matching this SDK's (and the sibling Node SDK's) existing convention of
      * each ms-transaction gateway class being self-contained.
@@ -234,9 +234,9 @@ class MsTransactionDaviplata
     public static function buildExtras($options)
     {
         $extras = array();
-        foreach (array("extra1", "extra2", "extra3", "extra4", "extra5", "extra6") as $key) {
-            if (isset($options[$key])) {
-                $extras[$key] = $options[$key];
+        for ($i = 1; $i <= 10; $i++) {
+            if (isset($options["extra" . $i])) {
+                $extras["extra" . $i] = $options["extra" . $i];
             }
         }
         return $extras;
@@ -534,7 +534,7 @@ class MsTransactionDaviplata
      * which buildSplitPayment() defaults to `array()` (an empty LIST -- it
      * would go out as `{}` where every other gateway and both sibling SDKs send
      * an encrypted "[]"), and `extras` when the caller passes no
-     * extra1..extra6. Keeping the rule keyed on the PHP type the caller
+     * extra1..extra10. Keeping the rule keyed on the PHP type the caller
      * actually chose leaves both of those byte-identical to
      * MsTransactionBank/MsTransactionCash, which is what real QA has already
      * exercised.

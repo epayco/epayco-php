@@ -265,7 +265,7 @@ class MsTransactionSafetypay
     }
 
     /**
-     * Bucket the legacy extra1..extra6 options into the `extras` object the
+     * Bucket the legacy extra1..extra10 options into the `extras` object the
      * new contract expects. Duplicated from MsTransactionBank rather than
      * shared, matching this SDK's (and the sibling Node SDK's) existing
      * convention of each ms-transaction gateway class being self-contained.
@@ -276,9 +276,9 @@ class MsTransactionSafetypay
     public static function buildExtras($options)
     {
         $extras = array();
-        foreach (array("extra1", "extra2", "extra3", "extra4", "extra5", "extra6") as $key) {
-            if (isset($options[$key])) {
-                $extras[$key] = $options[$key];
+        for ($i = 1; $i <= 10; $i++) {
+            if (isset($options["extra" . $i])) {
+                $extras["extra" . $i] = $options["extra" . $i];
             }
         }
         return $extras;

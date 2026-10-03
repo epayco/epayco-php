@@ -383,7 +383,7 @@ $cash = $epayco->cash->create("puntored", array());//expiration date can not be 
 #### Retrieve
 
 ```php
-$cash = $epayco->cash->transaction("id_transaction");
+$cash = $epayco->cash->transaction("ref_payco");
 ```
 
 
