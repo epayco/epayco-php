@@ -1468,6 +1468,6 @@ class MsTransactionDaviplata
     public static function baseUrlAuth()
     {
         $env = getenv("BASE_URL_MS_TRANSACTION_AUTH");
-        return $env ? $env : "https://apiflow.epayco.io";
+        return $env ? $env : "https://apiflow-green.epayco.co";
     }
 }
