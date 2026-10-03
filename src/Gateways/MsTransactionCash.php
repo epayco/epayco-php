@@ -126,7 +126,7 @@ class MsTransactionCash
                 ? $options["method_confirmation"]
                 : (isset($options["metodoconfirmacion"]) ? $options["metodoconfirmacion"] : "GET"),
             "description" => isset($options["description"]) ? $options["description"] : null,
-            "integrationType" => array("tipo_checkout" => "smart_checkout", "modo_pago" => "cash"),
+            "integrationType" => array("tipo_checkout" => "api", "modo_pago" => "cash"),
             "publicKey" => $epayco->api_key,
             "extras" => self::buildExtras($options),
             // extra5 mirrors the internal-tracking marker Client::request already
