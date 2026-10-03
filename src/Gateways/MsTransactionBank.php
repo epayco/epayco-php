@@ -1047,7 +1047,7 @@ class MsTransactionBank
     public static function baseUrl()
     {
         $env = getenv("BASE_URL_MS_TRANSACTION");
-        return $env ? $env : "https://apiflow.epayco.io";
+        return $env ? $env : "https://apiflow-green.epayco.co";
     }
 
     /**
