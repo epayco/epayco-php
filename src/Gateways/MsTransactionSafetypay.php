@@ -26,13 +26,14 @@ use WpOrg\Requests\Requests;
  * side-effect-free helper besides the three that make actual HTTP calls:
  * login(), createTransaction() and getTransaction().
  *
- * Auth handshake: same as MsTransactionBank (HTTP Basic auth,
- * base64(apiKey:privateKey), against eks-apify-service.epayco.io/login,
- * Epayco\Client::BASE_URL_APIFY), NOT MsTransactionCash's OAuth2
- * client_credentials login against apiflow.epayco.io. Verified empirically in
- * the sibling Node SDK's migration of this same flow (SDK-1354), and it is
- * also the same host the legacy SafetyPay flow already authenticated against
- * (Client::authentication()'s $apify = true branch).
+ * Auth: the same as every other ms-transaction payment method in this SDK
+ * (MsTransactionCash, MsTransactionBank, MsTransactionDaviplata): OAuth2
+ * client_credentials against apiflow.epayco.io/authentication/api/v2/login.
+ * The ms-transaction flow is the same for every payment method; only the
+ * payment method itself (`paymentMethod`, `integrationType.modo_pago`)
+ * changes. The earlier Basic-auth login against eks-apify-service.epayco.io/
+ * login (copied from the sibling Node SDK's SDK-1354 migration) is no longer
+ * used -- PSE dropped it the same way in SDK-1365 (QA BUG-04).
  *
  * Endpoints: the GENERIC ms-transaction transaction endpoints, the same ones
  * MsTransactionCash/MsTransactionBank already use --
@@ -173,12 +174,14 @@ class MsTransactionSafetypay
      *   (ms-transaction does validate field names strictly -- see the
      *   alpha-2/alpha-3 country rejection above).
      *
-     * - `integrationType` is `{tipo_checkout: "smart_checkout", modo_pago:
-     *   "safetypay"}`. SDK-1368's Jira description shows
-     *   `{tipo_checkout: "api", modo_pago: "payment"}` instead, but the values
-     *   used here are the ones actually exercised against the real API in the
-     *   sibling Node SDK's SDK-1354 QA, and they match the convention
-     *   MsTransactionBank/MsTransactionCash already ship in this SDK.
+     * - `integrationType` is `{tipo_checkout: "api", modo_pago: "safetypay"}`.
+     *   `tipo_checkout` is "api" for every payment method this SDK sends
+     *   (PSE, Efectivo, Daviplata, SafetyPay): the SDK is a server-to-server
+     *   API integration, and the ms-transaction flow is the same for all of
+     *   them -- only `modo_pago` changes. It used to be "smart_checkout",
+     *   copied from the sibling Node SDK's SDK-1354. `modo_pago` stays
+     *   "safetypay"; SDK-1368's Jira description and the ms-transaction
+     *   contract's SP example show "payment".
      *
      * @param  object $epayco the Epayco instance (api_key/private_key/test)
      * @param  array  $options caller-supplied options (legacy field names)
@@ -238,7 +241,7 @@ class MsTransactionSafetypay
                 ? $options["method_confirmation"]
                 : (isset($options["metodoconfirmacion"]) ? $options["metodoconfirmacion"] : "POST"),
             "description" => isset($options["description"]) ? $options["description"] : null,
-            "integrationType" => array("tipo_checkout" => "smart_checkout", "modo_pago" => "safetypay"),
+            "integrationType" => array("tipo_checkout" => "api", "modo_pago" => "safetypay"),
             "publicKey" => $epayco->api_key,
             "extras" => self::buildExtras($options),
             // extra5 "P42" mirrors the internal-tracking marker Client::request
@@ -604,16 +607,12 @@ class MsTransactionSafetypay
     }
 
     /**
-     * Log in against the ms-transaction Basic-auth login endpoint and return
-     * the JWT to use as a Bearer token for both createTransaction() and
-     * getTransaction(). Not cached (the JWT is short-lived, so callers
-     * re-login per request), mirroring MsTransactionBank::login(), whose
-     * handshake this is identical to -- see this class' own docblock for why
-     * SafetyPay uses Basic auth instead of MsTransactionCash's OAuth2
-     * client_credentials.
-     *
-     * Responds with `{token: "..."}` directly; `{data: {token: "..."}}` is
-     * also tolerated defensively, same as MsTransactionBank::login().
+     * Log in against the ms-transaction OAuth2 endpoint and return the JWT to
+     * use as a Bearer token for both createTransaction() and getTransaction().
+     * Same flow as MsTransactionCash::login() and MsTransactionBank::login():
+     * client_credentials against {baseUrlAuth}/authentication/api/v2/login,
+     * token in `data.token` (a bare `token` is tolerated too). Not cached: the
+     * JWT is short-lived, so callers re-login per request.
      *
      * @param  string $apiKey
      * @param  string $privateKey
@@ -622,10 +621,11 @@ class MsTransactionSafetypay
      */
     public static function login($apiKey, $privateKey, $lang)
     {
-        $headers = array(
-            "Content-Type" => "application/json",
-            "Accept" => "application/json",
-            "Authorization" => "Basic " . base64_encode($apiKey . ":" . $privateKey),
+        $headers = array("Content-Type" => "application/json", "Accept" => "application/json");
+        $body = array(
+            "client_id" => $apiKey,
+            "client_secret" => $privateKey,
+            "grant_type" => "client_credentials",
         );
         $options = array(
             "timeout" => self::REQUEST_TIMEOUT,
@@ -633,7 +633,7 @@ class MsTransactionSafetypay
         );
 
         try {
-            $response = Requests::post(self::baseUrlAuth() . "/login", $headers, json_encode(array()), $options);
+            $response = Requests::post(self::baseUrlAuth() . "/authentication/api/v2/login", $headers, json_encode($body), $options);
         } catch (\Exception $e) {
             throw new ErrorException($lang, 101);
         }
@@ -641,10 +641,10 @@ class MsTransactionSafetypay
         $json = json_decode($response->body, true);
         $token = null;
         if (is_array($json)) {
-            if (isset($json["token"])) {
-                $token = $json["token"];
-            } elseif (isset($json["data"]["token"])) {
+            if (isset($json["data"]["token"])) {
                 $token = $json["data"]["token"];
+            } elseif (isset($json["token"])) {
+                $token = $json["token"];
             }
         }
 
@@ -1053,22 +1053,18 @@ class MsTransactionSafetypay
     }
 
     /**
-     * Base host for the SafetyPay Basic-auth login endpoint. Deliberately its
-     * OWN env var (`BASE_URL_MS_TRANSACTION_AUTH_SAFETYPAY`), separate from
-     * both MsTransactionCash's `BASE_URL_MS_TRANSACTION_AUTH` and
-     * MsTransactionBank's `BASE_URL_MS_TRANSACTION_AUTH_PSE`, for the same
-     * reason MsTransactionBank gave for splitting its own: an operator
-     * redirecting one payment method's auth endpoint must not silently
-     * redirect another's. Defaults to Client::BASE_URL_APIFY (not a
-     * duplicated literal) -- the exact host/constant the legacy SafetyPay
-     * flow already authenticated against via Client::authentication()'s
-     * $apify = true branch.
+     * Base host for the ms-transaction auth API. Same env var
+     * (`BASE_URL_MS_TRANSACTION_AUTH`) and default host as
+     * MsTransactionCash::baseUrlAuth() and MsTransactionBank::baseUrlAuth(),
+     * since every ms-transaction payment method uses the same OAuth2 login.
+     * The former SafetyPay-only `BASE_URL_MS_TRANSACTION_AUTH_SAFETYPAY`
+     * (which pointed at the apify Basic-auth login) is no longer read.
      *
      * @return string
      */
     public static function baseUrlAuth()
     {
-        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH_SAFETYPAY");
-        return $env ? $env : Client::BASE_URL_APIFY;
+        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH");
+        return $env ? $env : "https://apiflow.epayco.io";
     }
 }

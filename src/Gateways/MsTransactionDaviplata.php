@@ -27,14 +27,14 @@ use WpOrg\Requests\Requests;
  * HTTP calls: login(), createTransaction(), getTransaction() and
  * confirmTransaction().
  *
- * Auth handshake: same as MsTransactionBank (HTTP Basic auth,
- * base64(apiKey:privateKey), against eks-apify-service.epayco.io/login,
- * Epayco\Client::BASE_URL_APIFY), NOT MsTransactionCash's OAuth2
- * client_credentials login against apiflow.epayco.io. Verified empirically in
- * the sibling Node SDK's migration of this same flow (SDK-1353, real pre-prod,
- * merchant 630339 -- the same merchant this SDK's own QA uses), and it is also
- * the same host the legacy Daviplata flow already authenticated against
- * (Client::authentication()'s $apify = true branch).
+ * Auth: the same as every other ms-transaction payment method in this SDK
+ * (MsTransactionCash, MsTransactionBank, MsTransactionSafetypay): OAuth2
+ * client_credentials against apiflow.epayco.io/authentication/api/v2/login.
+ * The ms-transaction flow is the same for every payment method; only the
+ * payment method itself (`paymentMethod`, `integrationType.modo_pago`)
+ * changes. The earlier Basic-auth login against eks-apify-service.epayco.io/
+ * login (copied from the sibling Node SDK's SDK-1353 migration) is no longer
+ * used -- PSE dropped it the same way in SDK-1365 (QA BUG-04).
  *
  * Endpoints: the GENERIC ms-transaction transaction endpoints, the same ones
  * MsTransactionCash/MsTransactionBank already use --
@@ -598,15 +598,13 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Log in against the ms-transaction Basic-auth login endpoint and return
-     * the JWT to use as a Bearer token for both createTransaction() and
-     * getTransaction(). Not cached (the JWT is short-lived, so callers re-login
-     * per request), mirroring MsTransactionBank::login(), whose handshake this
-     * is identical to -- see this class' own docblock for why Daviplata uses
-     * Basic auth instead of MsTransactionCash's OAuth2 client_credentials.
-     *
-     * Responds with `{token: "..."}` directly; `{data: {token: "..."}}` is also
-     * tolerated defensively, same as MsTransactionBank::login().
+     * Log in against the ms-transaction OAuth2 endpoint and return the JWT to
+     * use as a Bearer token for createTransaction(), getTransaction() and
+     * confirmTransaction(). Same flow as MsTransactionCash::login() and
+     * MsTransactionBank::login(): client_credentials against
+     * {baseUrlAuth}/authentication/api/v2/login, token in `data.token` (a bare
+     * `token` is tolerated too). Not cached: the JWT is short-lived, so callers
+     * re-login per request.
      *
      * @param  string $apiKey
      * @param  string $privateKey
@@ -615,10 +613,11 @@ class MsTransactionDaviplata
      */
     public static function login($apiKey, $privateKey, $lang)
     {
-        $headers = array(
-            "Content-Type" => "application/json",
-            "Accept" => "application/json",
-            "Authorization" => "Basic " . base64_encode($apiKey . ":" . $privateKey),
+        $headers = array("Content-Type" => "application/json", "Accept" => "application/json");
+        $body = array(
+            "client_id" => $apiKey,
+            "client_secret" => $privateKey,
+            "grant_type" => "client_credentials",
         );
         $options = array(
             "timeout" => self::REQUEST_TIMEOUT,
@@ -626,7 +625,7 @@ class MsTransactionDaviplata
         );
 
         try {
-            $response = Requests::post(self::baseUrlAuth() . "/login", $headers, json_encode(array()), $options);
+            $response = Requests::post(self::baseUrlAuth() . "/authentication/api/v2/login", $headers, json_encode($body), $options);
         } catch (\Exception $e) {
             throw new ErrorException($lang, 101);
         }
@@ -634,10 +633,10 @@ class MsTransactionDaviplata
         $json = json_decode($response->body, true);
         $token = null;
         if (is_array($json)) {
-            if (isset($json["token"])) {
-                $token = $json["token"];
-            } elseif (isset($json["data"]["token"])) {
+            if (isset($json["data"]["token"])) {
                 $token = $json["data"]["token"];
+            } elseif (isset($json["token"])) {
+                $token = $json["token"];
             }
         }
 
@@ -1457,22 +1456,18 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Base host for the Daviplata Basic-auth login endpoint. Deliberately its
-     * OWN env var (`BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA`), separate from
-     * MsTransactionCash's `BASE_URL_MS_TRANSACTION_AUTH` and
-     * MsTransactionBank's `BASE_URL_MS_TRANSACTION_AUTH_PSE`, for the same
-     * reason MsTransactionBank gave for splitting its own: an operator
-     * redirecting one payment method's auth endpoint must not silently redirect
-     * another's. Defaults to Client::BASE_URL_APIFY (not a duplicated literal)
-     * -- the exact host/constant the legacy Daviplata flow already
-     * authenticated against via Client::authentication()'s $apify = true
-     * branch.
+     * Base host for the ms-transaction auth API. Same env var
+     * (`BASE_URL_MS_TRANSACTION_AUTH`) and default host as
+     * MsTransactionCash::baseUrlAuth() and MsTransactionBank::baseUrlAuth(),
+     * since every ms-transaction payment method uses the same OAuth2 login.
+     * The former Daviplata-only `BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA`
+     * (which pointed at the apify Basic-auth login) is no longer read.
      *
      * @return string
      */
     public static function baseUrlAuth()
     {
-        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA");
-        return $env ? $env : Client::BASE_URL_APIFY;
+        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH");
+        return $env ? $env : "https://apiflow.epayco.io";
     }
 }
