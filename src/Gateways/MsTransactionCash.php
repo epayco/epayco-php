@@ -83,6 +83,15 @@ class MsTransactionCash
      * verified equivalent field in the new contract): `type_person` is not
      * forwarded.
      *
+     * `end_date` (the pin's expiration date, which the legacy flow sent as
+     * `fechaexpiracion` via Utils/key_lang.json) travels as
+     * `paymentMethodData.expirationDate`, next to the franchise:
+     * `"paymentMethodData": {"franchise": "EF", "expirationDate": "2025-05-16"}`
+     * (SDK-1366 QA, BUG-02). Without it ms-transaction expires every pin at
+     * creation + 5 days, while the legacy flow honoured the date the merchant
+     * asked for. It is sent as given (the legacy format is Y-m-d) and left out
+     * when the caller does not send it, so the backend keeps its default.
+     *
      * @param  object $epayco the Epayco instance (api_key/private_key/test)
      * @param  string $franchise mapped franchise code (see $FRANCHISE_MAP)
      * @param  array  $options caller-supplied options (legacy field names)
@@ -93,6 +102,9 @@ class MsTransactionCash
         $options = is_array($options) ? $options : array();
 
         $paymentMethodData = array("franchise" => $franchise);
+        if (isset($options["end_date"]) && $options["end_date"] !== "") {
+            $paymentMethodData["expirationDate"] = $options["end_date"];
+        }
         if (isset($options["credits"]) && $options["credits"] !== null) {
             $paymentMethodData["credits"] = $options["credits"];
         }
@@ -126,7 +138,7 @@ class MsTransactionCash
                 ? $options["method_confirmation"]
                 : (isset($options["metodoconfirmacion"]) ? $options["metodoconfirmacion"] : "GET"),
             "description" => isset($options["description"]) ? $options["description"] : null,
-            "integrationType" => array("tipo_checkout" => "smart_checkout", "modo_pago" => "cash"),
+            "integrationType" => array("tipo_checkout" => "api", "modo_pago" => "cash"),
             "publicKey" => $epayco->api_key,
             "extras" => self::buildExtras($options),
             // extra5 mirrors the internal-tracking marker Client::request already
@@ -145,8 +157,11 @@ class MsTransactionCash
     }
 
     /**
-     * Bucket the legacy extra1..extra6 options into the `extras` object the
-     * new contract expects.
+     * Bucket the legacy extra1..extra10 options into the `extras` object the
+     * new contract expects. The legacy flow keeps all ten (it answers
+     * `data.extras.extra1` to `extra10` with the values sent) and the README
+     * documents them; only copying extra1..extra6, as this did before, lost
+     * extra7..extra10 silently (SDK-1366 QA, BUG-03).
      *
      * @param  array $options
      * @return array
@@ -154,9 +169,9 @@ class MsTransactionCash
     public static function buildExtras($options)
     {
         $extras = array();
-        foreach (array("extra1", "extra2", "extra3", "extra4", "extra5", "extra6") as $key) {
-            if (isset($options[$key])) {
-                $extras[$key] = $options[$key];
+        for ($i = 1; $i <= 10; $i++) {
+            if (isset($options["extra" . $i])) {
+                $extras["extra" . $i] = $options["extra" . $i];
             }
         }
         return $extras;
@@ -616,13 +631,23 @@ class MsTransactionCash
     }
 
     /**
-     * Map a ms-transaction field-validation error response into a
-     * legacy-shaped error response, so callers see the same top-level
-     * shape (`success`/`title_response`/`text_response`/`last_action`/`data`)
-     * regardless of which kind of error was returned. Best-effort (not
-     * verified against a real legacy validation-error response for this
-     * SDK specifically), mirroring the equivalent best-effort mapping
-     * already in the Python migration of this same flow.
+     * Map a ms-transaction field-validation error response into the shape the
+     * legacy endpoint returns for a failed validation (verified against the
+     * real legacy PHP flow, pre-prod, 2026-10-02): `success: false`,
+     * `title_response` "Error", `last_action` "validation transaction" and a
+     * thin `data` of `{totalerrores, errores: [{codError, errorMessage}]}`
+     * (no `idfactura`), in that envelope order.
+     *
+     * `text_response` keeps the backend's own detail (extractErrorMessage()),
+     * so the integrator sees what failed; legacy's generic text is only the
+     * fallback when the backend sends no detail at all.
+     *
+     * Compatibility: before SDK-1366 this method returned `data` as
+     * `{totalErrors, errors: [{cod_error, error_message}]}` (develop only, never
+     * tagged). Those keys are kept after the legacy ones, with the same
+     * content, so an integrator already reading them keeps working. Only
+     * `title_response` ("ERROR" -> "Error") and `last_action` ("validation
+     * data" -> "validation transaction") could not be kept both ways.
      *
      * @param  array $raw ms-transaction response body
      * @return object
@@ -633,34 +658,40 @@ class MsTransactionCash
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $errors = isset($data["errors"]) && is_array($data["errors"]) ? $data["errors"] : array();
 
-        // El mensaje real arriba, no el generico. El generico queda solo como
-        // ultimo recurso, cuando el backend no manda ningun detalle.
+        // El mensaje real arriba, no el generico. El generico (el del legacy)
+        // queda solo como ultimo recurso, cuando el backend no manda detalle.
         $texto = self::extractErrorMessage($raw);
         if ($texto === null) {
-            $texto = "Algunos campos son obligatorios, corrija los errores e intente nuevamente";
+            $texto = "Algunos campos son invalidos, por favor corrija los errores y vuelva a intentarlo";
         }
 
         $mapped = array(
             "success" => false,
-            "title_response" => "ERROR",
+            "title_response" => "Error",
             "text_response" => $texto,
-            "last_action" => "validation data",
+            "last_action" => "validation transaction",
         );
 
         // `data` solo cuando hay errores estructurados que poner ahi. Sin esto,
-        // un fallo sin `errors` devolvia `data: {totalErrors: 0, errors: []}`,
+        // un fallo sin `errors` devolvia `data: {totalerrores: 0, errores: []}`,
         // que no aporta nada, o -- peor, por el enrutado viejo -- un objeto con
         // forma de transaccion y todo en null. Mismo criterio que
         // MsTransactionDaviplata::buildLegacyErrorShape().
         if (count($errors) > 0) {
+            $errores = array();
+            $erroresAnteriores = array();
+            foreach ($errors as $error) {
+                $code = (is_array($error) && isset($error["code"])) ? $error["code"] : null;
+                $message = (is_array($error) && isset($error["message"])) ? $error["message"] : null;
+                $errores[] = array("codError" => $code, "errorMessage" => $message);
+                $erroresAnteriores[] = array("cod_error" => $code, "error_message" => $message);
+            }
             $mapped["data"] = array(
+                "totalerrores" => count($errors),
+                "errores" => $errores,
+                // Names used before SDK-1366, kept so existing readers don't break.
                 "totalErrors" => count($errors),
-                "errors" => array_map(function ($error) {
-                    return array(
-                        "cod_error" => (is_array($error) && isset($error["code"])) ? $error["code"] : null,
-                        "error_message" => (is_array($error) && isset($error["message"])) ? $error["message"] : null,
-                    );
-                }, $errors),
+                "errors" => $erroresAnteriores,
             );
         }
 
@@ -684,6 +715,15 @@ class MsTransactionCash
      * equivalent of this field -- only `responseCode`, a string like "P004"
      * that lines up with legacy's separate `cod_error` field instead, mapped
      * below).
+     *
+     * A `Rechazada`/`Fallida` transaction (cod_respuesta 2/4) comes back with
+     * `success: false`, `title_response: "FAIL"` and the backend's reason
+     * (`data.response`) in `text_response`, like legacy (SDK-1366 QA); `data`
+     * stays complete, since ms-transaction did create the transaction (it has
+     * a `ref_payco`). Any other status keeps `success: true` / "SUCCESS".
+     *
+     * `valorneto` is the amount without tax (`data.subtotal`), like legacy
+     * (25000 of 29750); it falls back to `data.amount` when not sent.
      *
      * `cc_network_response` is included below despite having no equivalent
      * field in the ms-transaction response, mirroring what the Node
@@ -709,23 +749,25 @@ class MsTransactionCash
         // cuando en realidad no se creo nada. Es el mismo bug que se corrigio en
         // SDK-1368 para SafetyPay y que MsTransactionBank/MsTransactionDaviplata
         // ya evitan. Los rechazos de NEGOCIO no entran aca: el backend los manda
-        // con success true y el detalle en `estado`/`respuesta` (p.ej. "Amount
-        // must be greater than 20000"), asi que siguen mapeandose por la ruta de
-        // exito con su transaccion real.
+        // con success true y la transaccion ya creada (`status` Fallida/Rechazada,
+        // p.ej. "Amount must be greater than 20000"); se mapean mas abajo, con
+        // success false como el legacy.
         if (self::isValidationError($raw) || empty($raw["success"])) {
             return self::legacyValidationErrorResponse($raw);
         }
 
         $options = is_array($options) ? $options : array();
-        $success = !empty($raw["success"]);
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $providerData = isset($data["paymentProviderData"]) && is_array($data["paymentProviderData"]) ? $data["paymentProviderData"] : array();
         $extrasEpaycoNew = isset($data["extrasEpayco"]) && is_array($data["extrasEpayco"]) ? $data["extrasEpayco"] : array();
+        $codRespuesta = self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null);
+        $failed = $codRespuesta === 2 || $codRespuesta === 4;
+        $message = isset($raw["message"]) ? $raw["message"] : null;
 
         $mapped = array(
-            "success" => $success,
-            "title_response" => $success ? "SUCCESS" : "ERROR",
-            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "success" => !$failed,
+            "title_response" => $failed ? "FAIL" : "SUCCESS",
+            "text_response" => $failed ? (isset($data["response"]) ? $data["response"] : $message) : $message,
             "last_action" => "Crear pin " . $medio,
             "data" => array(
                 "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -735,7 +777,7 @@ class MsTransactionCash
                 "iva" => isset($data["tax"]) ? $data["tax"] : null,
                 "ico" => isset($data["ico"]) ? $data["ico"] : null,
                 "baseiva" => isset($data["taxBase"]) ? $data["taxBase"] : null,
-                "valorneto" => isset($data["amount"]) ? $data["amount"] : null,
+                "valorneto" => isset($data["subtotal"]) ? $data["subtotal"] : (isset($data["amount"]) ? $data["amount"] : null),
                 "moneda" => isset($data["currency"]) ? $data["currency"] : null,
                 "banco" => strtoupper($medio),
                 "estado" => isset($data["status"]) ? $data["status"] : null,
@@ -744,7 +786,7 @@ class MsTransactionCash
                 "recibo" => isset($data["receipt"]) ? $data["receipt"] : null,
                 "fecha" => isset($data["date"]) ? $data["date"] : null,
                 "franquicia" => isset($data["franchise"]) ? $data["franchise"] : null,
-                "cod_respuesta" => self::codRespuestaFromEstado(isset($data["status"]) ? $data["status"] : null),
+                "cod_respuesta" => $codRespuesta,
                 "cod_error" => isset($data["responseCode"]) ? $data["responseCode"] : null,
                 "ip" => isset($data["ip"]) ? $data["ip"] : null,
                 "enpruebas" => isset($data["testMode"]) ? $data["testMode"] : null,
@@ -818,6 +860,252 @@ class MsTransactionCash
         }
 
         return self::mapToLegacyShape($raw, $options, $medio);
+    }
+
+    /**
+     * Query a cash transaction by `ref_payco` against the ms-transaction
+     * generic endpoint (GET /payment/api/v1/transactions/{refPayco}, the same
+     * one Bank/Daviplata/SafetyPay already query) and answer the shape of the
+     * legacy cash query, /restpagos/transaction/response.json -- see
+     * mapQueryToLegacyShape(). SDK-1366 QA, BUG-01.
+     *
+     * A `ref_payco` that is not a plain positive integer answers the legacy
+     * "Transacción no existe" response without any request, as the legacy
+     * endpoint answered it (and so nothing but digits ever reaches the path).
+     *
+     * @param  object     $epayco the Epayco instance (api_key/private_key/lang)
+     * @param  string|int $refPayco
+     * @return object legacy-shaped query response
+     */
+    public static function getTransaction($epayco, $refPayco)
+    {
+        if (!preg_match('/^[1-9][0-9]*$/D', (string)$refPayco)) {
+            return self::mapQueryToLegacyShape(array("success" => false, "message" => "no encontrada"));
+        }
+
+        $token = self::login($epayco->api_key, $epayco->private_key, $epayco->lang);
+        $headers = array(
+            "Content-Type" => "application/json",
+            "Accept" => "application/json",
+            "Authorization" => "Bearer " . $token,
+        );
+        $requestOptions = array(
+            "timeout" => self::REQUEST_TIMEOUT,
+            "connect_timeout" => self::REQUEST_TIMEOUT,
+        );
+
+        try {
+            $response = Requests::get(self::baseUrl() . "/payment/api/v1/transactions/" . rawurlencode((string)$refPayco), $headers, $requestOptions);
+        } catch (\Exception $e) {
+            throw new ErrorException($epayco->lang, 101);
+        }
+
+        $raw = json_decode($response->body, true);
+        if (!is_array($raw)) {
+            throw new ErrorException($epayco->lang, 106);
+        }
+
+        return self::mapQueryToLegacyShape($raw, self::merchantIdFromToken($token));
+    }
+
+    /**
+     * The merchant id (P_CUST_ID_CLIENTE) an ms-transaction JWT was issued
+     * for: its `sub` claim (e.g. "630339"). The token is the one login() just
+     * received from apiflow over TLS, so its payload is read without
+     * verifying the signature: it only fills `x_cust_id_cliente` in
+     * mapQueryToLegacyShape() and must never be used to authorize anything.
+     *
+     * @internal
+     * @param  string $token
+     * @return int|null
+     */
+    public static function merchantIdFromToken($token)
+    {
+        $parts = explode(".", (string)$token);
+        if (count($parts) < 2) {
+            return null;
+        }
+        $payload = json_decode(base64_decode(strtr($parts[1], "-_", "+/")), true);
+        if (!is_array($payload) || !isset($payload["sub"]) || !preg_match('/^[0-9]+$/D', (string)$payload["sub"])) {
+            return null;
+        }
+        return (int)$payload["sub"];
+    }
+
+    /**
+     * Map a ms-transaction query response into the shape of the legacy cash
+     * query (/restpagos/transaction/response.json), which is NOT the create()
+     * shape: an `x_*` data object. Every key, its order and its type come
+     * from the real legacy responses captured in pre-prod on 2026-10-02
+     * (gana and efecty, created through the legacy flow and through
+     * ms-transaction, queried through the legacy endpoint):
+     *
+     *   {"success": true, "title_response": "Correcto",
+     *    "text_response": "Transacción consultada existosamente",
+     *    "last_action": "Consultar Transaccion",
+     *    "data": {"x_cust_id_cliente": 630339, "x_ref_payco": 1000015148, ...}}
+     *
+     * ("existosamente" is the legacy's own typo, reproduced like
+     * `autorization` in the Daviplata gateway.) An unknown or invalid
+     * reference answered `success: false`, "Error", "Transacción no existe",
+     * "Consultar Transaccion" and `data: []`; ms-transaction's
+     * "Transacción # N no encontrada." maps to exactly that. Any other failure
+     * keeps the same envelope with the backend's own message, or "No se pudo
+     * consultar la transacción" when it sends none, so an outage never reads
+     * as a transaction that does not exist.
+     *
+     * Field notes, all from that same comparison:
+     *
+     * - `x_cust_id_cliente` is the merchant the ms-transaction token was
+     *   issued for (its `sub` claim, see merchantIdFromToken()), since the
+     *   GET response does not carry the owner. That is the owner only while
+     *   ms-transaction answers each merchant its own transactions: today it
+     *   does not check it (SDK-1366 QA, BUG-04), which is the ms-transaction
+     *   team's fix, not the SDK's (decision of 2026-10-02, kept so the
+     *   response stays the legacy one).
+     * - `x_signature`, `x_business` (the merchant's name),
+     *   `x_customer_phone`, `x_customer_movil` and `x_customer_ind_pais` have
+     *   no source in the ms-transaction response and are `null`.
+     *   `x_signature` is the legacy's sha256 of the merchant's P_KEY among
+     *   other fields, which this SDK does not have.
+     * - The payer fields (`x_customer_doctype`, `x_customer_document`,
+     *   `x_customer_name`, `x_customer_lastname`, `x_customer_email`,
+     *   `x_customer_country`, `x_customer_address`) come from
+     *   `payerInformation`, which ms-transaction masks. The legacy masked
+     *   most of them too, but not the same way (e.g. "C*" vs "CC").
+     * - `x_cod_respuesta`, `x_cod_response` and `x_cod_transaction_state` are
+     *   the numeric code of the status (codRespuestaFromEstado()).
+     * - `x_mpd_points` 0, `x_cardnumber` "*******" and `x_quotas` "" are what
+     *   the legacy answered for every cash transaction.
+     * - `x_test_request` is "TRUE" when ms-transaction's `testMode` is 1.
+     * - `x_extra1`..`x_extra10` come from `extras`, and one
+     *   `x_extraN_epayco` per key of `extrasEpayco`, in the same order: the
+     *   legacy answered only `x_extra5_epayco` for a transaction created
+     *   through the legacy flow and `x_extra1_epayco`, `x_extra2_epayco`,
+     *   `x_extra3_epayco`, `x_extra5_epayco` for one created through
+     *   ms-transaction, which is exactly what each one has in `extrasEpayco`.
+     *
+     * @param  array    $raw ms-transaction GET /transactions/{refPayco} body
+     * @param  int|null $merchantId the token's merchant (x_cust_id_cliente)
+     * @return object legacy-shaped query response
+     */
+    public static function mapQueryToLegacyShape($raw, $merchantId = null)
+    {
+        $raw = is_array($raw) ? $raw : array();
+
+        if (empty($raw["success"])) {
+            $message = self::extractErrorMessage($raw);
+            $message = is_string($message) && $message !== "" ? $message : null;
+            $notFound = $message !== null && preg_match('/no encontrad/i', $message);
+            return json_decode(json_encode(array(
+                "success" => false,
+                "title_response" => "Error",
+                "text_response" => $notFound
+                    ? "Transacción no existe"
+                    : ($message !== null ? $message : "No se pudo consultar la transacción"),
+                "last_action" => "Consultar Transaccion",
+                "data" => array(),
+            )));
+        }
+
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $get = function ($source, $key, $default = null) {
+            return (is_array($source) && array_key_exists($key, $source) && $source[$key] !== null) ? $source[$key] : $default;
+        };
+        $payer = $get($data, "payerInformation", array());
+        $payer = (is_array($payer) && !self::isList($payer)) ? $payer : array();
+        $extras = $get($data, "extras", array());
+        $extras = (is_array($extras) && !self::isList($extras)) ? $extras : array();
+        $extrasEpayco = $get($data, "extrasEpayco", array());
+        $extrasEpayco = (is_array($extrasEpayco) && !self::isList($extrasEpayco)) ? $extrasEpayco : array();
+
+        $status = $get($data, "status");
+        $code = self::codRespuestaFromEstado($status);
+        $amount = self::queryNumber($get($data, "amount"));
+        $date = $get($data, "date");
+
+        $x = array(
+            "x_cust_id_cliente" => $merchantId,
+            "x_ref_payco" => $get($data, "refPayco"),
+            "x_id_factura" => $get($data, "invoice"),
+            "x_id_invoice" => $get($data, "invoice"),
+            "x_description" => $get($data, "description"),
+            "x_mpd_points" => 0,
+            "x_amount" => $amount,
+            "x_amount_country" => $amount,
+            "x_amount_ok" => $amount,
+            "x_tax" => self::queryNumber($get($data, "tax")),
+            "x_tax_ico" => self::queryNumber($get($data, "ico")),
+            "x_amount_base" => self::queryNumber($get($data, "taxBase")),
+            "x_currency_code" => $get($data, "currency"),
+            "x_bank_name" => $get($data, "nameBank"),
+            "x_cardnumber" => "*******",
+            "x_quotas" => "",
+            "x_respuesta" => $status,
+            "x_response" => $status,
+            "x_approval_code" => $get($data, "authorization"),
+            "x_transaction_id" => $get($data, "receipt") === null ? null : (string)$get($data, "receipt"),
+            "x_fecha_transaccion" => $date,
+            "x_transaction_date" => $date,
+            "x_cod_respuesta" => $code,
+            "x_cod_response" => $code,
+            "x_response_reason_text" => $get($data, "response"),
+            "x_cod_transaction_state" => $code,
+            "x_transaction_state" => $status,
+            "x_errorcode" => $get($data, "responseCode"),
+            "x_franchise" => $get($data, "franchise"),
+            "x_business" => null,
+            "x_customer_doctype" => $get($payer, "documentType"),
+            "x_customer_document" => $get($payer, "document"),
+            "x_customer_name" => $get($payer, "names"),
+            "x_customer_lastname" => $get($payer, "lastNames"),
+            "x_customer_email" => $get($payer, "email"),
+            "x_customer_phone" => null,
+            "x_customer_movil" => null,
+            "x_customer_ind_pais" => null,
+            "x_customer_country" => $get($payer, "country"),
+            "x_customer_city" => $get($data, "city"),
+            "x_customer_address" => $get($payer, "address"),
+            "x_customer_ip" => $get($data, "ip"),
+            "x_signature" => null,
+            "x_test_request" => ((string)$get($data, "testMode") === "1") ? "TRUE" : "FALSE",
+            "x_transaction_cycle" => null,
+        );
+        for ($i = 1; $i <= 10; $i++) {
+            $x["x_extra" . $i] = $get($extras, "extra" . $i, "");
+        }
+        $epaycoKeys = array_keys($extrasEpayco);
+        sort($epaycoKeys, SORT_NATURAL);
+        foreach ($epaycoKeys as $key) {
+            if (preg_match('/^extra[0-9]+$/', (string)$key)) {
+                $x["x_" . $key . "_epayco"] = $extrasEpayco[$key] === null ? "" : $extrasEpayco[$key];
+            }
+        }
+
+        return json_decode(json_encode(array(
+            "success" => true,
+            "title_response" => "Correcto",
+            "text_response" => "Transacción consultada existosamente",
+            "last_action" => "Consultar Transaccion",
+            "data" => $x,
+        )));
+    }
+
+    /**
+     * A numeric string ("0.00", "4750") as the number the legacy query
+     * answered (0, 4750); anything else unchanged. Same rule as
+     * MsTransactionBank::asNumber().
+     *
+     * @param  mixed $value
+     * @return mixed
+     */
+    public static function queryNumber($value)
+    {
+        if (!is_string($value) || !is_numeric($value)) {
+            return $value;
+        }
+        $number = (float)$value;
+        return (floor($number) == $number && abs($number) < PHP_INT_MAX) ? (int)$number : $number;
     }
 
     /**

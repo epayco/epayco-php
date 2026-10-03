@@ -249,6 +249,8 @@ $sub = $epayco->subscriptions->charge(array(
 
 ### PSE
 
+PSE (bank listing, create and retrieve) goes through ms-transaction by default. To keep the legacy flow, pass `"transactionMethods" => array("bank")` to the `Epayco\Epayco` constructor.
+
 #### Listar bancos
 
 ```php
@@ -296,8 +298,12 @@ $pse = $epayco->bank->create(array(
 #### Retrieve
 
 ```php
-$pse = $epayco->bank->get("ticketId");
+$pse = $epayco->bank->get("ref_payco");
 ```
+
+Note: the default flow queries by `ref_payco` (`data.ref_payco` from the create response). To query by `transactionID`, use the legacy flow (`"transactionMethods" => array("bank")`).
+
+The `ref_payco` received in the `url_response` redirect comes from the buyer's browser: check that it belongs to one of your own orders before querying it or showing its data.
 
 #### Split Payments
 
@@ -377,7 +383,7 @@ $cash = $epayco->cash->create("puntored", array());//expiration date can not be 
 #### Retrieve
 
 ```php
-$cash = $epayco->cash->transaction("id_transaction");
+$cash = $epayco->cash->transaction("ref_payco");
 ```
 
 
@@ -524,6 +530,10 @@ $pay = $epayco->daviplata->confirm(array(
     "otp" => "2580"
 ));
 ```
+
+The OTP expires at `tokenExpirationDate` (from the create response). Call `confirm()` once per payment: confirming a
+payment that is no longer pending returns an error without sending the OTP again, but two `confirm()` calls running at
+the same time for the same payment are not protected (for example, a double click), so do not retry it concurrently.
 
 ### Safetypay
 

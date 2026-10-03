@@ -23,17 +23,18 @@ use WpOrg\Requests\Requests;
  * Daviplata-specific. Kept as its own self-contained class (not sharing helpers
  * with those two) on purpose, same criterion already applied there and in the
  * sibling Node SDK's lib/gateways/msTransactionDaviplata.js -- every method
- * here is a static, side-effect-free helper besides the three that make actual
- * HTTP calls: login(), createTransaction() and getTransaction().
+ * here is a static, side-effect-free helper besides the four that make actual
+ * HTTP calls: login(), createTransaction(), getTransaction() and
+ * confirmTransaction().
  *
- * Auth handshake: same as MsTransactionBank (HTTP Basic auth,
- * base64(apiKey:privateKey), against eks-apify-service.epayco.io/login,
- * Epayco\Client::BASE_URL_APIFY), NOT MsTransactionCash's OAuth2
- * client_credentials login against apiflow.epayco.io. Verified empirically in
- * the sibling Node SDK's migration of this same flow (SDK-1353, real pre-prod,
- * merchant 630339 -- the same merchant this SDK's own QA uses), and it is also
- * the same host the legacy Daviplata flow already authenticated against
- * (Client::authentication()'s $apify = true branch).
+ * Auth: the same as every other ms-transaction payment method in this SDK
+ * (MsTransactionCash, MsTransactionBank, MsTransactionSafetypay): OAuth2
+ * client_credentials against apiflow.epayco.io/authentication/api/v2/login.
+ * The ms-transaction flow is the same for every payment method; only the
+ * payment method itself (`paymentMethod`, `integrationType.modo_pago`)
+ * changes. The earlier Basic-auth login against eks-apify-service.epayco.io/
+ * login (copied from the sibling Node SDK's SDK-1353 migration) is no longer
+ * used -- PSE dropped it the same way in SDK-1365 (QA BUG-04).
  *
  * Endpoints: the GENERIC ms-transaction transaction endpoints, the same ones
  * MsTransactionCash/MsTransactionBank already use --
@@ -71,13 +72,16 @@ use WpOrg\Requests\Requests;
  * see getTransaction()'s docblock for why the query path remaps too, unlike the
  * sibling Node SDK's equivalent.
  *
- * NOT migrated: Resources/Daviplata::confirm() (the OTP-confirmation step,
- * legacy POST /payment/confirm/daviplata). SDK-1367 only asks for create +
- * query, and ms-transaction's generic transactions endpoint has no equivalent
- * for confirming a session's OTP. Both sibling SDKs made the same call and left
- * confirm() permanently on the legacy endpoint (epayco-node's
- * lib/resources/daviplata.js, epayco-python's epaycosdk/resources.py) --
- * corroborated, not a guess. See Resources/Daviplata::confirm()'s own docblock.
+ * Since 2026-10-02 there IS a captured real legacy Daviplata response to pair
+ * against: the create and OTP-confirmation matrices run in green with this SDK
+ * (both flows, same input). The field-level notes in mapToLegacyShape() and
+ * mapConfirmToLegacyShape() that cite "the legacy response" come from there.
+ *
+ * Also migrated: Resources/Daviplata::confirm() (the OTP-confirmation step),
+ * through ms-transaction's finishTransaction operation
+ * (POST /payment/api/v1/transaction/finish) -- see confirmTransaction(). The
+ * sibling Node and Python SDKs still leave confirm() on the legacy endpoint;
+ * they predate finding that operation.
  */
 class MsTransactionDaviplata
 {
@@ -125,13 +129,12 @@ class MsTransactionDaviplata
      *   that distinction has to be made here, at the call site, instead of in
      *   the encryption helper.
      *
-     * - The body carries NO `quotes`, NO `address` and NO `city`, unlike
-     *   MsTransactionCash/MsTransactionBank. Neither the ticket's example body
-     *   nor either sibling SDK sends them for Daviplata, so they are not
-     *   invented here -- note the caller's `address`/`city` options are still
-     *   honoured, they just travel back out through mapToLegacyShape (which
-     *   reproduces the legacy response's own `data.address`/`data.city`)
-     *   instead of into the request.
+     * - The body carries `address` and `city`, like MsTransactionCash/
+     *   MsTransactionBank (but still NO `quotes`). They were left out at first
+     *   because neither the ticket's example body nor either sibling SDK sends
+     *   them, and the green matrix (2026-10-02) showed the cost: without
+     *   `city` the backend stores and answers "SIN CIUDAD", while the legacy
+     *   flow answered the caller's own city.
      *
      * - `document` is read from `document` FIRST, falling back to `doc_number`:
      *   `document` is Daviplata's own documented legacy field name (README.md's
@@ -176,6 +179,8 @@ class MsTransactionDaviplata
             "lastNames" => isset($options["last_name"]) ? $options["last_name"] : null,
             "phone" => isset($options["phone"]) ? $options["phone"] : null,
             "cellphone" => isset($options["cell_phone"]) ? $options["cell_phone"] : null,
+            "address" => isset($options["address"]) ? $options["address"] : null,
+            "city" => isset($options["city"]) ? $options["city"] : null,
             "email" => isset($options["email"]) ? $options["email"] : null,
             "amount" => isset($options["value"]) ? $options["value"] : null,
             "tax" => isset($options["tax"]) ? $options["tax"] : 0,
@@ -218,7 +223,7 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Bucket the legacy extra1..extra6 options into the `extras` object the new
+     * Bucket the legacy extra1..extra10 options into the `extras` object the new
      * contract expects. Duplicated from MsTransactionBank rather than shared,
      * matching this SDK's (and the sibling Node SDK's) existing convention of
      * each ms-transaction gateway class being self-contained.
@@ -229,9 +234,9 @@ class MsTransactionDaviplata
     public static function buildExtras($options)
     {
         $extras = array();
-        foreach (array("extra1", "extra2", "extra3", "extra4", "extra5", "extra6") as $key) {
-            if (isset($options[$key])) {
-                $extras[$key] = $options[$key];
+        for ($i = 1; $i <= 10; $i++) {
+            if (isset($options["extra" . $i])) {
+                $extras["extra" . $i] = $options["extra" . $i];
             }
         }
         return $extras;
@@ -529,7 +534,7 @@ class MsTransactionDaviplata
      * which buildSplitPayment() defaults to `array()` (an empty LIST -- it
      * would go out as `{}` where every other gateway and both sibling SDKs send
      * an encrypted "[]"), and `extras` when the caller passes no
-     * extra1..extra6. Keeping the rule keyed on the PHP type the caller
+     * extra1..extra10. Keeping the rule keyed on the PHP type the caller
      * actually chose leaves both of those byte-identical to
      * MsTransactionBank/MsTransactionCash, which is what real QA has already
      * exercised.
@@ -593,15 +598,13 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Log in against the ms-transaction Basic-auth login endpoint and return
-     * the JWT to use as a Bearer token for both createTransaction() and
-     * getTransaction(). Not cached (the JWT is short-lived, so callers re-login
-     * per request), mirroring MsTransactionBank::login(), whose handshake this
-     * is identical to -- see this class' own docblock for why Daviplata uses
-     * Basic auth instead of MsTransactionCash's OAuth2 client_credentials.
-     *
-     * Responds with `{token: "..."}` directly; `{data: {token: "..."}}` is also
-     * tolerated defensively, same as MsTransactionBank::login().
+     * Log in against the ms-transaction OAuth2 endpoint and return the JWT to
+     * use as a Bearer token for createTransaction(), getTransaction() and
+     * confirmTransaction(). Same flow as MsTransactionCash::login() and
+     * MsTransactionBank::login(): client_credentials against
+     * {baseUrlAuth}/authentication/api/v2/login, token in `data.token` (a bare
+     * `token` is tolerated too). Not cached: the JWT is short-lived, so callers
+     * re-login per request.
      *
      * @param  string $apiKey
      * @param  string $privateKey
@@ -610,10 +613,11 @@ class MsTransactionDaviplata
      */
     public static function login($apiKey, $privateKey, $lang)
     {
-        $headers = array(
-            "Content-Type" => "application/json",
-            "Accept" => "application/json",
-            "Authorization" => "Basic " . base64_encode($apiKey . ":" . $privateKey),
+        $headers = array("Content-Type" => "application/json", "Accept" => "application/json");
+        $body = array(
+            "client_id" => $apiKey,
+            "client_secret" => $privateKey,
+            "grant_type" => "client_credentials",
         );
         $options = array(
             "timeout" => self::REQUEST_TIMEOUT,
@@ -621,7 +625,7 @@ class MsTransactionDaviplata
         );
 
         try {
-            $response = Requests::post(self::baseUrlAuth() . "/login", $headers, json_encode(array()), $options);
+            $response = Requests::post(self::baseUrlAuth() . "/authentication/api/v2/login", $headers, json_encode($body), $options);
         } catch (\Exception $e) {
             throw new ErrorException($lang, 101);
         }
@@ -629,10 +633,10 @@ class MsTransactionDaviplata
         $json = json_decode($response->body, true);
         $token = null;
         if (is_array($json)) {
-            if (isset($json["token"])) {
-                $token = $json["token"];
-            } elseif (isset($json["data"]["token"])) {
+            if (isset($json["data"]["token"])) {
                 $token = $json["data"]["token"];
+            } elseif (isset($json["token"])) {
+                $token = $json["token"];
             }
         }
 
@@ -706,6 +710,20 @@ class MsTransactionDaviplata
      * A failure carrying no structured `errors` falls back to the same shape
      * minus `data`, mirroring the sibling Node SDK's equivalent fallback.
      *
+     * `lastAction` follows legacy's two variants, the same as
+     * MsTransactionSafetypay (verified against the real legacy Daviplata flow,
+     * green, 2026-10-02, on both create() and confirm()): "validation data"
+     * when a required field is missing (legacy A001, e.g. "El campo 'document'
+     * es requerido", "El campo 'otp' es requerido") and "validation
+     * transaction" when a value is invalid (E014 minimum amount).
+     * ms-transaction does not send legacy's codes, so a missing field is
+     * recognised by its message ("El campo document es obligatorio.", "El
+     * campo payment method data.otp es obligatorio.").
+     *
+     * Used for both createTransaction() and confirmTransaction() failures: the
+     * legacy create and confirm endpoints answer a validation error with this
+     * same shape.
+     *
      * @param  array $raw ms-transaction response body
      * @return object legacy-shaped error response
      */
@@ -715,11 +733,19 @@ class MsTransactionDaviplata
         $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
         $errors = (isset($data["errors"]) && is_array($data["errors"])) ? $data["errors"] : array();
 
+        $missingField = false;
+        foreach ($errors as $error) {
+            if (is_array($error) && isset($error["message"]) && preg_match('/\bcampo\b.*\bes (obligatori|requerid)/i', (string)$error["message"])) {
+                $missingField = true;
+                break;
+            }
+        }
+
         $mapped = array(
             "success" => false,
             "titleResponse" => "Error",
             "textResponse" => self::extractErrorMessage($raw),
-            "lastAction" => "validation transaction",
+            "lastAction" => $missingField ? "validation data" : "validation transaction",
         );
 
         if (count($errors) > 0) {
@@ -735,6 +761,44 @@ class MsTransactionDaviplata
         }
 
         return json_decode(json_encode($mapped));
+    }
+
+    /**
+     * `status` text (Spanish, case-insensitive) -> legacy numeric
+     * `codResponse`. Duplicated from MsTransactionCash::codRespuestaFromEstado
+     * rather than shared -- see buildExtras()'s docblock. The legacy Daviplata
+     * flow answered 3 for a Pendiente (green, 2026-10-02). Adds "aprobado":
+     * a Daviplata payment confirmed through finishTransaction is stored with
+     * that status, not "Aceptada" (green, 2026-10-02).
+     *
+     * @param  string $estado e.g. "Pendiente", "Rechazada"
+     * @return int 0 for a status this mapping does not know
+     */
+    public static function codRespuestaFromEstado($estado)
+    {
+        switch (strtolower(trim((string)$estado))) {
+            case "aprobada":
+            case "aprobado":
+            case "aceptada":
+                return 1;
+            case "rechazada":
+                return 2;
+            case "pendiente":
+                return 3;
+            case "fallida":
+                return 4;
+            case "reversada":
+            case "reversado":
+                return 6;
+            case "retenido":
+                return 7;
+            case "abandonada":
+                return 10;
+            case "cancelada":
+                return 11;
+            default:
+                return 0;
+        }
     }
 
     /**
@@ -758,6 +822,15 @@ class MsTransactionDaviplata
      *   what each legacy endpoint really answered, so they are deliberately not
      *   normalized across payment methods.
      *
+     * - A Fallida or Rechazada transaction answers `success: false`,
+     *   `titleResponse: "FAIL"` and the backend's reason (`data.response`) in
+     *   `textResponse`, keeping the full `data` (the transaction does exist,
+     *   with its refPayco). Same rule MsTransactionSafetypay/MsTransactionCash/
+     *   MsTransactionBank apply (ADR-002 in the AI workspace). Real case, green,
+     *   2026-10-02: with `test: true` ms-transaction creates the transaction
+     *   Fallida, "Daviplata no disponible para iniciar la transacción", and it
+     *   used to come back as `success: true`.
+     *
      * - `lastAction` is "Registrar pago en daviplata", the legacy endpoint's
      *   own wording (both sibling SDKs use this exact string).
      *
@@ -774,15 +847,23 @@ class MsTransactionDaviplata
      *   legacy response hardcoded it, since the paying "bank" is never anything
      *   else on this payment method. Both sibling SDKs hardcode it too.
      *
-     * - `netoValue` is `data.amount`, the same source as `value`: the legacy
-     *   response carried both keys with the same number for Daviplata.
+     * - `netoValue` is the value without tax, `data.subtotal` (falling back to
+     *   `data.amount` when absent): the real legacy response answers
+     *   `value - tax` (10000 for value 11900 with tax 1900, green,
+     *   2026-10-02), not the total. Same fix as MsTransactionCash's
+     *   `valorneto`.
      *
      * - `extras_epayco` really is snake_case inside an otherwise camelCase
      *   `data` object in the real legacy response. Reproduced verbatim.
      *
-     * - `codResponse` reads `data.responseCode`, defaulting to "" when absent;
-     *   `codError` is always "" (error codes travel through
-     *   buildLegacyErrorShape instead, on the failure path).
+     * - `codResponse` is the legacy numeric code derived from the status
+     *   (codRespuestaFromEstado: Pendiente 3, Aceptada 1, Rechazada 2,
+     *   Fallida 4...), like MsTransactionCash/MsTransactionBank: the legacy
+     *   answered 3 for a Pendiente, while ms-transaction's `responseCode` is an
+     *   HTTP-like 201/200/"500". `data.responseCode` is only the fallback for a
+     *   status the mapping does not know. `codError` is always "" (error codes
+     *   travel through buildLegacyErrorShape instead, on the failure path);
+     *   the legacy "P004" of a Pendiente has no source in the new response.
      *
      * - `daviplataOtpLab` has no equivalent field in the new response, here or
      *   in either sibling SDK, so it is left `null` rather than invented. It is
@@ -790,12 +871,14 @@ class MsTransactionDaviplata
      *   itself be a breaking change.
      *
      * - `idSessionToken`/`tokenExpirationDate` come from
-     *   `paymentProviderData.paymentSessionId`/`paymentSessionExpirationDate`.
-     *   This is the mapping that matters most to callers: the legacy
-     *   `idSessionToken` is the value Resources/Daviplata::confirm() needs to
-     *   confirm the OTP (see README.md's Daviplata "Confirm" example), so a
-     *   caller that creates via ms-transaction and then confirms via the legacy
-     *   endpoint reads it from exactly the same place as before.
+     *   `paymentProviderData.paymentSessionId`/`expirationDateToken`. This is
+     *   the mapping that matters most to callers: the legacy `idSessionToken`
+     *   is the value Resources/Daviplata::confirm() needs to confirm the OTP
+     *   (see README.md's Daviplata "Confirm" example), and
+     *   `tokenExpirationDate` tells them until when that OTP is valid. The real
+     *   backend names the latter `expirationDateToken` (green, 2026-10-02);
+     *   the `paymentSessionExpirationDate` name the sibling SDKs read never
+     *   came, so it is kept only as a fallback.
      *
      * - `paymentProviderData` is normalized away when it arrives as a JSON list
      *   instead of an object (PHP-decoded: a sequential array), which the
@@ -814,7 +897,9 @@ class MsTransactionDaviplata
      *   does carry it unmasked), falling back to the caller's `$options`. The
      *   sibling Node SDK reads only `data.city` and Python reads only
      *   `options["city"]`; taking both, in that order, matches Node on the
-     *   create path and still returns something on a query.
+     *   create path and still returns something on a query. buildBody() sends
+     *   the caller's `city`, so `data.city` is that same city (it used to be
+     *   the backend's "SIN CIUDAD" default).
      *
      * When `success === false` this delegates to buildLegacyErrorShape()
      * instead -- see that method's docblock.
@@ -844,6 +929,15 @@ class MsTransactionDaviplata
 
         $amount = isset($data["amount"]) ? $data["amount"] : null;
 
+        $status = isset($data["status"]) ? strtolower(trim((string)$data["status"])) : "";
+        $failed = $status === "fallida" || $status === "rechazada";
+        $response = isset($data["response"]) ? $data["response"] : null;
+
+        $codResponse = self::codRespuestaFromEstado($status);
+        if ($codResponse === 0) {
+            $codResponse = isset($data["responseCode"]) ? $data["responseCode"] : "";
+        }
+
         if (isset($data["city"])) {
             $city = $data["city"];
         } elseif (isset($options["city"])) {
@@ -860,9 +954,9 @@ class MsTransactionDaviplata
         }
 
         $mapped = array(
-            "success" => true,
-            "titleResponse" => "SUCCESS",
-            "textResponse" => $message,
+            "success" => !$failed,
+            "titleResponse" => $failed ? "FAIL" : "SUCCESS",
+            "textResponse" => ($failed && $response !== null && $response !== "") ? $response : $message,
             "lastAction" => "Registrar pago en daviplata",
             "data" => array(
                 "refPayco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -872,16 +966,16 @@ class MsTransactionDaviplata
                 "tax" => isset($data["tax"]) ? $data["tax"] : null,
                 "ico" => isset($data["ico"]) ? $data["ico"] : null,
                 "taxBase" => isset($data["taxBase"]) ? $data["taxBase"] : null,
-                "netoValue" => $amount,
+                "netoValue" => isset($data["subtotal"]) ? $data["subtotal"] : $amount,
                 "currency" => isset($data["currency"]) ? $data["currency"] : null,
                 "bank" => "DaviPlata",
                 "estatus" => isset($data["status"]) ? $data["status"] : null,
-                "response" => isset($data["response"]) ? $data["response"] : null,
+                "response" => $response,
                 "autorization" => isset($data["authorization"]) ? $data["authorization"] : null,
                 "receipt" => isset($data["receipt"]) ? $data["receipt"] : null,
                 "date" => isset($data["date"]) ? $data["date"] : null,
                 "franchise" => isset($data["franchise"]) ? $data["franchise"] : null,
-                "codResponse" => isset($data["responseCode"]) ? $data["responseCode"] : "",
+                "codResponse" => $codResponse,
                 "codError" => "",
                 "ip" => isset($data["ip"]) ? $data["ip"] : null,
                 "testMode" => isset($data["testMode"]) ? $data["testMode"] : null,
@@ -894,7 +988,9 @@ class MsTransactionDaviplata
                 "address" => isset($options["address"]) ? $options["address"] : null,
                 "indCountry" => isset($options["ind_country"]) ? $options["ind_country"] : "",
                 "idSessionToken" => isset($providerData["paymentSessionId"]) ? $providerData["paymentSessionId"] : null,
-                "tokenExpirationDate" => isset($providerData["paymentSessionExpirationDate"]) ? $providerData["paymentSessionExpirationDate"] : null,
+                "tokenExpirationDate" => isset($providerData["expirationDateToken"])
+                    ? $providerData["expirationDateToken"]
+                    : (isset($providerData["paymentSessionExpirationDate"]) ? $providerData["paymentSessionExpirationDate"] : null),
                 "daviplataOtpLab" => null,
                 "extras" => isset($data["extras"]) ? $data["extras"] : array(),
                 "extras_epayco" => array("extra5" => isset($extrasEpaycoNew["extra5"]) ? $extrasEpaycoNew["extra5"] : null),
@@ -963,7 +1059,7 @@ class MsTransactionDaviplata
      * apify flow never had a query endpoint for it (Resources/Daviplata only
      * ever exposed create() and confirm()). So there is no legacy behavior to
      * preserve and no `transactionMethods` opt-out for it either -- opting out
-     * of the migration only affects create().
+     * of the migration only affects create() and confirm().
      *
      * Deliberate deviation from the sibling Node SDK, which returns the raw
      * ms-transaction body from its equivalent getTransaction(): here the
@@ -1015,6 +1111,312 @@ class MsTransactionDaviplata
     }
 
     /**
+     * Map the legacy confirm() options into ms-transaction's
+     * finishTransaction body:
+     *
+     *   {"refPayco": 101659993,
+     *    "paymentMethodData": {"otp": "1234", "idSessionToken": "acb"}}
+     *
+     * Plain JSON, NOT encrypted like createTransaction()'s body: the
+     * ms-transaction contract (docs/v2.yaml, FinishTransactionRequest) documents
+     * it in clear, and that is what green answered to (2026-10-02).
+     *
+     * Reads the legacy option names `ref_payco`/`id_session_token`/`otp`
+     * (README.md's Daviplata "Confirm" example) and, as a fallback, their
+     * apify names `refPayco`/`idSessionToken`, which the legacy flow also
+     * accepted (Utils/key_lang_apify.json passes unknown keys through).
+     * A numeric `ref_payco` is sent as an integer (the contract types it so);
+     * anything else is sent as-is so the backend answers its own validation
+     * error. A missing field is left out, not sent as null, for the same
+     * reason. `paymentMethodData` is built as `new \stdClass()` when empty so
+     * it encodes as `{}`, not `[]` -- see buildBody().
+     *
+     * @param  array $options caller-supplied options (legacy field names)
+     * @return array plaintext finishTransaction body
+     */
+    public static function buildConfirmBody($options)
+    {
+        $options = is_array($options) ? $options : array();
+
+        $refPayco = isset($options["ref_payco"]) ? $options["ref_payco"] : (isset($options["refPayco"]) ? $options["refPayco"] : null);
+        if ($refPayco !== null && preg_match(self::REF_PAYCO_REGEX, (string)$refPayco)) {
+            $refPayco = (int)$refPayco;
+        }
+
+        $paymentMethodData = array();
+        if (isset($options["otp"])) {
+            $paymentMethodData["otp"] = (string)$options["otp"];
+        }
+        $sessionToken = isset($options["id_session_token"]) ? $options["id_session_token"] : (isset($options["idSessionToken"]) ? $options["idSessionToken"] : null);
+        if ($sessionToken !== null) {
+            $paymentMethodData["idSessionToken"] = (string)$sessionToken;
+        }
+
+        $body = array(
+            "paymentMethodData" => count($paymentMethodData) > 0 ? $paymentMethodData : new \stdClass(),
+        );
+        if ($refPayco !== null) {
+            $body = array_merge(array("refPayco" => $refPayco), $body);
+        }
+
+        return $body;
+    }
+
+    /**
+     * Map a finishTransaction response into the shape the legacy
+     * /payment/confirm/daviplata endpoint returns. That shape is NOT the
+     * create() one: same envelope (success, titleResponse, textResponse,
+     * lastAction), but a 7-key `data`. Every literal below was read from the
+     * real legacy confirm() responses captured in green on 2026-10-02 (same
+     * merchant, same payer, real OTP):
+     *
+     *   Approved:  {"success": true, "titleResponse": "SUCCESS",
+     *               "textResponse": "Aprobada",
+     *               "lastAction": "Confirmar pago en daviplata",
+     *               "data": {"refPayco": "388205367", "status": "Aprobado",
+     *                        "date": "2026-10-02T13:40:17",
+     *                        "numApproval": "017134",
+     *                        "idTransactionDaviplata": 238867,
+     *                        "idTransactionAutorization": "000000238867",
+     *                        "response": "Aprobado"}}
+     *   Wrong OTP: {"success": false, "titleResponse": "FAILED",
+     *               "textResponse": "Código de confirmación incorrecto",
+     *               "lastAction": "Confirmar pago en daviplata",
+     *               "data": {"refPayco": 388205603, "status": "Rechazada",
+     *                        ..., "numApproval": null,
+     *                        "idTransactionDaviplata": null,
+     *                        "idTransactionAutorization": null,
+     *                        "response": "Código de confirmación incorrecto"}}
+     *
+     * Field-level notes:
+     *
+     * - `success` is true ONLY for an approved status (Aprobado/Aprobada/
+     *   Aceptada) -- a whitelist, not the Fallida/Rechazada blacklist the
+     *   create path uses: a confirmation that did not approve the payment, for
+     *   whatever reason, is not a success. finishTransaction itself answers
+     *   HTTP 200 and `success: true` for a wrong OTP (the transaction is
+     *   Rechazada); reporting that as a success is exactly what ADR-002 rules
+     *   out.
+     * - `refPayco` is a string on approval and an integer otherwise, as the
+     *   legacy answered. Reproduced, not normalized, like `autorization`'s
+     *   typo in mapToLegacyShape().
+     * - `status` on approval is `paymentProviderData.status` when the backend
+     *   sends it (the contract's example: data.status "Aceptada",
+     *   paymentProviderData.status "Aprobado"), else `data.status` (green sends
+     *   "Aprobado" there).
+     * - `date` is `paymentProviderData.transactionDate` (the contract), else
+     *   `data.date`. Value-level difference: green only sends `data.date`, the
+     *   creation date ("2026-10-02 13:48:24"), where the legacy answered the
+     *   confirmation date in ISO format.
+     * - `numApproval` is `data.authorization`: in the legacy, `numApproval`
+     *   ("017134") is the authorization ePayco stores for the transaction (the
+     *   later query answered `autorization` 017134).
+     *   `paymentProviderData.numApproval` is NOT used: green fills it with a
+     *   concatenation (refPayco + date + another number), not an approval
+     *   number.
+     * - `idTransactionAutorization` is
+     *   `paymentProviderData.authorizerTransactionId` and
+     *   `idTransactionDaviplata` is that same id as an integer, as the legacy's
+     *   pair ("000000238867" / 238867). Green sends the authorization number
+     *   there too, unpadded.
+     * - `response` is `data.response` ("Aprobada"; the legacy said "Aprobado").
+     *
+     * A failed request (`success: false`: a missing field, an unknown
+     * refPayco) goes through buildLegacyErrorShape(), the same shape the legacy
+     * confirm endpoint answers its validation errors with.
+     *
+     * @param  array $raw finishTransaction response body ({success, message, data})
+     * @return object legacy-shaped confirm response
+     */
+    public static function mapConfirmToLegacyShape($raw)
+    {
+        $raw = is_array($raw) ? $raw : array();
+
+        if (empty($raw["success"])) {
+            return self::buildLegacyErrorShape($raw);
+        }
+
+        $message = isset($raw["message"]) ? $raw["message"] : null;
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $providerData = isset($data["paymentProviderData"]) ? $data["paymentProviderData"] : null;
+        if (!is_array($providerData) || self::isList($providerData)) {
+            $providerData = array();
+        }
+
+        $status = isset($data["status"]) ? $data["status"] : null;
+        $approved = in_array(strtolower(trim((string)$status)), array("aprobado", "aprobada", "aceptada"), true);
+        $response = isset($data["response"]) ? $data["response"] : null;
+        $refPayco = isset($data["refPayco"]) ? $data["refPayco"] : null;
+        $date = isset($providerData["transactionDate"]) ? $providerData["transactionDate"] : (isset($data["date"]) ? $data["date"] : null);
+
+        if (!$approved) {
+            return json_decode(json_encode(array(
+                "success" => false,
+                "titleResponse" => "FAILED",
+                "textResponse" => ($response !== null && $response !== "") ? $response : $message,
+                "lastAction" => "Confirmar pago en daviplata",
+                "data" => array(
+                    "refPayco" => is_numeric($refPayco) ? (int)$refPayco : $refPayco,
+                    "status" => $status,
+                    "date" => $date,
+                    "numApproval" => null,
+                    "idTransactionDaviplata" => null,
+                    "idTransactionAutorization" => null,
+                    "response" => $response,
+                ),
+            )));
+        }
+
+        $authorizerId = isset($providerData["authorizerTransactionId"]) ? $providerData["authorizerTransactionId"] : null;
+
+        return json_decode(json_encode(array(
+            "success" => true,
+            "titleResponse" => "SUCCESS",
+            "textResponse" => $message,
+            "lastAction" => "Confirmar pago en daviplata",
+            "data" => array(
+                "refPayco" => $refPayco === null ? null : (string)$refPayco,
+                "status" => isset($providerData["status"]) ? $providerData["status"] : $status,
+                "date" => $date,
+                "numApproval" => isset($data["authorization"]) ? $data["authorization"] : null,
+                "idTransactionDaviplata" => ($authorizerId !== null && ctype_digit((string)$authorizerId)) ? (int)$authorizerId : null,
+                "idTransactionAutorization" => $authorizerId,
+                "response" => $response,
+            ),
+        )));
+    }
+
+    /**
+     * The legacy confirm endpoint's answer when the transaction is no longer
+     * Pendiente (confirmed twice, or already rejected), captured in green on
+     * 2026-10-02 -- the wording's "parámeros" typo is the legacy's own,
+     * reproduced like `autorization` in mapToLegacyShape():
+     *
+     *   {"success": false, "titleResponse": "Error",
+     *    "textResponse": "Los parámeros enviados no son válidos o la
+     *                     transacción que intenta procesar ya tiene una
+     *                     respuesta",
+     *    "lastAction": "Validaciones generales Confirmar Pago DaviPlata",
+     *    "data": {"refPayco": 388205367, "status": "Aceptada", ...,
+     *             "numApproval": null, "idTransactionDaviplata": null,
+     *             "idTransactionAutorization": null, "response": "Aprobada"}}
+     *
+     * built here from the transaction's current state (a ms-transaction GET).
+     *
+     * @param  array $raw ms-transaction GET /transactions/{refPayco} body
+     * @return object legacy-shaped confirm response
+     */
+    public static function buildAlreadyAnsweredShape($raw)
+    {
+        $data = isset($raw["data"]) && is_array($raw["data"]) ? $raw["data"] : array();
+        $refPayco = isset($data["refPayco"]) ? $data["refPayco"] : null;
+
+        return json_decode(json_encode(array(
+            "success" => false,
+            "titleResponse" => "Error",
+            "textResponse" => "Los parámeros enviados no son válidos o la transacción que intenta procesar ya tiene una respuesta",
+            "lastAction" => "Validaciones generales Confirmar Pago DaviPlata",
+            "data" => array(
+                "refPayco" => is_numeric($refPayco) ? (int)$refPayco : $refPayco,
+                "status" => isset($data["status"]) ? $data["status"] : null,
+                "date" => isset($data["date"]) ? $data["date"] : null,
+                "numApproval" => null,
+                "idTransactionDaviplata" => null,
+                "idTransactionAutorization" => null,
+                "response" => isset($data["response"]) ? $data["response"] : null,
+            ),
+        )));
+    }
+
+    /**
+     * Confirm a Daviplata payment with the OTP the customer received, through
+     * ms-transaction's finishTransaction operation
+     * (POST /payment/api/v1/transaction/finish on the same apiflow host and
+     * with the same Bearer token createTransaction() uses). Resolves with the
+     * legacy confirm() shape -- see mapConfirmToLegacyShape().
+     *
+     * Before finishing, the transaction is read (GET
+     * /payment/api/v1/transactions/{refPayco}) and only a Pendiente one is
+     * sent to finishTransaction; any other status answers the legacy "already
+     * has a response" error (buildAlreadyAnsweredShape) without calling it.
+     * This is load-bearing, not a nicety: in green (2026-10-02) calling
+     * finishTransaction a second time on an APPROVED transaction made
+     * ms-transaction re-validate the already-used OTP with Daviplata, get
+     * "Código de confirmación incorrecto", and overwrite the transaction to
+     * Rechazada -- an approved, debited payment left rejected. The legacy
+     * endpoint refuses that second call instead, and so does this method. It
+     * narrows the window rather than closing it (two concurrent confirm()
+     * calls can still both see Pendiente); the fix belongs in ms-transaction.
+     *
+     * The guard fails CLOSED: finishTransaction is only called once the GET
+     * has positively answered Pendiente. A `ref_payco` that is not a plain
+     * positive integer throws ErrorException 103 before any request (same as
+     * getTransaction(); otherwise a value like "0388205367" would skip the
+     * GET and could still be coerced to a real refPayco by the backend), a
+     * GET error (e.g. "Transacción # N no encontrada.") is returned in the
+     * legacy error shape, and a GET answer that is not JSON throws
+     * ErrorException 106 -- none of them reaches finishTransaction. Only a
+     * missing `ref_payco` goes straight to finishTransaction, which then
+     * answers its own validation error without touching any transaction.
+     *
+     * @param  object $epayco the Epayco instance (api_key/private_key/lang)
+     * @param  array  $options ref_payco, id_session_token, otp (legacy names)
+     * @return object legacy-shaped confirm response
+     */
+    public static function confirmTransaction($epayco, $options)
+    {
+        $body = self::buildConfirmBody($options);
+        $hasRefPayco = array_key_exists("refPayco", $body);
+        if ($hasRefPayco && !is_int($body["refPayco"])) {
+            throw new ErrorException($epayco->lang, 103);
+        }
+
+        $token = self::login($epayco->api_key, $epayco->private_key, $epayco->lang);
+
+        $headers = array(
+            "Content-Type" => "application/json",
+            "Accept" => "application/json",
+            "Authorization" => "Bearer " . $token,
+        );
+        $requestOptions = array(
+            "timeout" => self::REQUEST_TIMEOUT,
+            "connect_timeout" => self::REQUEST_TIMEOUT,
+        );
+
+        if ($hasRefPayco) {
+            try {
+                $current = Requests::get(self::baseUrl() . "/payment/api/v1/transactions/" . rawurlencode((string)$body["refPayco"]), $headers, $requestOptions);
+            } catch (\Exception $e) {
+                throw new ErrorException($epayco->lang, 101);
+            }
+            $currentRaw = json_decode($current->body, true);
+            if (!is_array($currentRaw)) {
+                throw new ErrorException($epayco->lang, 106);
+            }
+            if (empty($currentRaw["success"])) {
+                return self::buildLegacyErrorShape($currentRaw);
+            }
+            $currentStatus = isset($currentRaw["data"]["status"]) ? strtolower(trim((string)$currentRaw["data"]["status"])) : "";
+            if ($currentStatus !== "pendiente") {
+                return self::buildAlreadyAnsweredShape($currentRaw);
+            }
+        }
+
+        try {
+            $response = Requests::post(self::baseUrl() . "/payment/api/v1/transaction/finish", $headers, json_encode($body), $requestOptions);
+        } catch (\Exception $e) {
+            throw new ErrorException($epayco->lang, 101);
+        }
+
+        $raw = json_decode($response->body, true);
+        if (!is_array($raw)) {
+            throw new ErrorException($epayco->lang, 106);
+        }
+
+        return self::mapConfirmToLegacyShape($raw);
+    }
+
+    /**
      * Resolve the caller's public IP the same way
      * MsTransactionBank::resolveIp/MsTransactionCash::resolveIp do -- see
      * MsTransactionCash::resolveIp's docblock for the full rationale (ipify,
@@ -1054,22 +1456,18 @@ class MsTransactionDaviplata
     }
 
     /**
-     * Base host for the Daviplata Basic-auth login endpoint. Deliberately its
-     * OWN env var (`BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA`), separate from
-     * MsTransactionCash's `BASE_URL_MS_TRANSACTION_AUTH` and
-     * MsTransactionBank's `BASE_URL_MS_TRANSACTION_AUTH_PSE`, for the same
-     * reason MsTransactionBank gave for splitting its own: an operator
-     * redirecting one payment method's auth endpoint must not silently redirect
-     * another's. Defaults to Client::BASE_URL_APIFY (not a duplicated literal)
-     * -- the exact host/constant the legacy Daviplata flow already
-     * authenticated against via Client::authentication()'s $apify = true
-     * branch.
+     * Base host for the ms-transaction auth API. Same env var
+     * (`BASE_URL_MS_TRANSACTION_AUTH`) and default host as
+     * MsTransactionCash::baseUrlAuth() and MsTransactionBank::baseUrlAuth(),
+     * since every ms-transaction payment method uses the same OAuth2 login.
+     * The former Daviplata-only `BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA`
+     * (which pointed at the apify Basic-auth login) is no longer read.
      *
      * @return string
      */
     public static function baseUrlAuth()
     {
-        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH_DAVIPLATA");
-        return $env ? $env : Client::BASE_URL_APIFY;
+        $env = getenv("BASE_URL_MS_TRANSACTION_AUTH");
+        return $env ? $env : "https://apiflow-green.epayco.co";
     }
 }

@@ -50,9 +50,9 @@ class Epayco
      * payment method (currently "cash", see SDK-1366 and Resources/Cash.php;
      * "bank", see SDK-1365 and Resources/Bank.php; and "daviplata", see
      * SDK-1367 and Resources/Daviplata.php) uses the new backend unless
-     * explicitly opted out. Note the opt-out only ever affects create(): the
-     * query methods added by those same migrations have no legacy counterpart
-     * to fall back to.
+     * explicitly opted out. Note the opt-out only ever affects create() (and,
+     * for "daviplata", confirm()): the query methods added by those same
+     * migrations have no legacy counterpart to fall back to.
      * @var array
      */
     public $transactionMethods = array();
