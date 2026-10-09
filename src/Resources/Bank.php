@@ -3,6 +3,7 @@
 namespace Epayco\Resources;
 
 use Epayco\Resource;
+use Epayco\Gateways\MsTransactionBank;
 
 /**
  * Bank methods
@@ -10,10 +11,34 @@ use Epayco\Resource;
 class Bank extends Resource
 {
     /**
-     * Return list all banks
+     * Return list all banks.
+     *
+     * As of SDK-1365, this lists the PSE banks through ms-transaction
+     * (apiflow.epayco.io) by default -- see
+     * Epayco\Gateways\MsTransactionBank::getBanks. Same
+     * `transactionMethods: ["bank"]` opt-out as create() below applies here
+     * too.
+     *
+     * @param  bool|null $testMode true/false, or null to use the client's `test`
      * @return object
      */
     public function pseBank($testMode = null)
+    {
+        if ($this->epayco->usesLegacyFlow('bank')) {
+            return $this->legacyPseBank($testMode);
+        }
+
+        return MsTransactionBank::getBanks($this->epayco, $testMode);
+    }
+
+    /**
+     * Legacy PSE bank listing, unchanged from the pre-SDK-1365
+     * implementation (apify /payment/pse/banks).
+     *
+     * @param  bool|null $testMode
+     * @return object
+     */
+    private function legacyPseBank($testMode)
     {
         if ($testMode === null) {
             $test = $this->epayco->test === "TRUE" || $this->epayco->test === true;
@@ -37,11 +62,45 @@ class Bank extends Resource
     }
 
     /**
-     * Create transaction in ACH
+     * Create transaction in PSE (bank debit).
+     *
+     * As of SDK-1365, this goes through the new ms-transaction microservice
+     * (apiflow.epayco.io) by default instead of the legacy
+     * secure.payco.co/restpagos/pagos/debitos.json endpoint -- see
+     * Epayco\Gateways\MsTransactionBank for the request-building/encryption
+     * details. A merchant can opt back into the legacy backend for PSE
+     * specifically by passing `transactionMethods: ["bank"]` to the Epayco
+     * constructor, mirroring the equivalent opt-out Resources/Cash.php
+     * already uses for SDK-1366 (`transactionMethods: ["cash"]`).
+     *
+     * The public signature (`$options`, legacy option names) and the
+     * resolved response's shape (see MsTransactionBank::mapToLegacyShape)
+     * are unchanged either way: this method never reshapes the legacy
+     * response, and it reshapes the new backend's response back into that
+     * same legacy shape -- it only changes which backend is called.
+     *
      * @param  Object $options data transaction
      * @return object
      */
     public function create($options = null)
+    {
+        if ($this->epayco->usesLegacyFlow('bank')) {
+            return $this->legacyCreate($options);
+        }
+
+        return MsTransactionBank::createTransaction($this->epayco, $options);
+    }
+
+    /**
+     * Legacy PSE creation, unchanged from the pre-SDK-1365 implementation:
+     * the secure.payco.co/restpagos/pagos/debitos.json endpoint, through the
+     * shared Resource::request (field-name translation + AES encryption,
+     * same as every other legacy resource in this repo).
+     *
+     * @param  Object $options data transaction
+     * @return object
+     */
+    private function legacyCreate($options)
     {
         return $this->request(
             "POST",
@@ -56,11 +115,38 @@ class Bank extends Resource
     }
 
     /**
-     * Return data transaction
-     * @param  String $uid id transaction
+     * Return data transaction.
+     *
+     * As of SDK-1365, this queries the new ms-transaction microservice by
+     * default instead of the legacy
+     * secure.payco.co/restpagos/pse/transactioninfomation.json endpoint --
+     * see Epayco\Gateways\MsTransactionBank::getTransaction. Same
+     * `transactionMethods: ["bank"]` opt-out as create() above applies here
+     * too.
+     *
+     * The new flow queries by `ref_payco` (`data.ref_payco` from create);
+     * querying by `transactionID` needs the legacy flow. The response keeps
+     * the legacy query shape (see MsTransactionBank::mapQueryToLegacyShape).
+     *
+     * @param  String $uid ref_payco (new flow) or transactionID (legacy flow)
      * @return object
      */
     public function get($uid = null)
+    {
+        if ($this->epayco->usesLegacyFlow('bank')) {
+            return $this->legacyGet($uid);
+        }
+
+        return MsTransactionBank::getTransaction($this->epayco, $uid);
+    }
+
+    /**
+     * Legacy PSE retrieval, unchanged from the pre-SDK-1365 implementation.
+     *
+     * @param  String $uid id transaction
+     * @return object
+     */
+    private function legacyGet($uid)
     {
         return $this->request(
             "GET",
