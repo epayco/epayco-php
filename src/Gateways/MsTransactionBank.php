@@ -873,6 +873,61 @@ class MsTransactionBank
     }
 
     /**
+     * Decode an ms-transaction response body. A body that is not a JSON
+     * object (an HTTP 500 "context deadline exceeded", a 404 with no body)
+     * becomes `{success: false, message}` with the same message the legacy
+     * flow gives for that response (Client::request): "La respuesta del
+     * servidor está vacía o no es válida." for an empty body, the legacy
+     * text of 400/401/403/404/405, and "Error inesperado del servidor (HTTP
+     * N)" otherwise. The callers map it to the legacy error shape like any
+     * other backend failure.
+     *
+     * It used to throw ErrorException 106 ("Llave pública inválida,
+     * compruébela"), which blamed the integrator's credentials for a service
+     * failure -- login() had just succeeded with those same keys (SDK-1365
+     * QA, BUG-10). The legacy flow never threw here either.
+     *
+     * @param  object $response WpOrg\Requests\Response
+     * @return array decoded body, or `{success: false, message}`
+     */
+    public static function decodeResponse($response)
+    {
+        $body = isset($response->body) ? (string)$response->body : "";
+        $raw = json_decode($body, true);
+        if (is_array($raw) && !self::isList($raw)) {
+            return $raw;
+        }
+
+        $status = isset($response->status_code) ? (int)$response->status_code : 0;
+        if (trim($body) === "") {
+            $message = "La respuesta del servidor está vacía o no es válida.";
+        } else {
+            switch ($status) {
+                case 400:
+                    $message = "Solicitud incorrecta, por favor verifica los datos enviados";
+                    break;
+                case 401:
+                    $message = "No autorizado, revisa tus credenciales";
+                    break;
+                case 403:
+                    $message = "Acceso prohibido, no tienes permisos para esta acción";
+                    break;
+                case 404:
+                    $message = "La ruta en la que estás realizando la petición no existe";
+                    break;
+                case 405:
+                    $message = "Método no permitido en esta ruta";
+                    break;
+                default:
+                    $message = "Error inesperado del servidor (HTTP {$status})";
+                    break;
+            }
+        }
+
+        return array("success" => false, "message" => $message);
+    }
+
+    /**
      * Create a PSE (bank debit) transaction against the ms-transaction
      * generic transactions endpoint. Resolves with the same response shape
      * the legacy endpoint returns (see mapToLegacyShape) -- SDK-1365
@@ -910,10 +965,7 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = self::decodeResponse($response);
 
         return self::mapToLegacyShape($raw, isset($options["invoice"]) ? $options["invoice"] : null);
     }
@@ -962,10 +1014,7 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = self::decodeResponse($response);
 
         return self::mapQueryToLegacyShape($raw);
     }
@@ -1007,10 +1056,7 @@ class MsTransactionBank
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = self::decodeResponse($response);
 
         return self::mapToLegacyShapeBanks($raw, $test);
     }
