@@ -569,6 +569,27 @@ class MsTransactionBank
         }
     }
 
+    public static function queryTitleFromEstado($estado)
+    {
+        switch (strtolower((string)$estado)) {
+            case "pendiente":
+                return array("PENDING", "Transacción Pendiente");
+            case "rechazada":
+                return array("NOT_AUTHORIZED", "Transacción Rechazada");
+            default:
+                return null;
+        }
+    }
+
+    public static function asInteger($value)
+    {
+        $string = (string)$value;
+        if (!preg_match('/^[0-9]{1,18}$/D', $string)) {
+            return $value;
+        }
+        return (int)$string;
+    }
+
     /**
      * Numeric string -> number ("0.00" -> 0, "1.50" -> 1.5); anything else is
      * returned unchanged. The ms-transaction query returns `ico` as "0.00"
@@ -737,7 +758,7 @@ class MsTransactionBank
         $mapped = array(
             "success" => !$failed,
             "title_response" => $failed ? "FAIL" : "SUCCESS",
-            "text_response" => $failed ? (isset($data["response"]) ? $data["response"] : $message) : $message,
+            "text_response" => $failed ? (isset($data["response"]) ? $data["response"] : $message) : "Transaccion Creada Exitosamente",
             "last_action" => "get bank url",
             "data" => array(
                 "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -751,7 +772,7 @@ class MsTransactionBank
                 "estado" => isset($data["status"]) ? $data["status"] : null,
                 "respuesta" => isset($data["response"]) ? $data["response"] : null,
                 "cod_respuesta" => $codRespuesta,
-                "cod_error" => isset($data["responseCode"]) ? $data["responseCode"] : null,
+                "cod_error" => ($failed && isset($data["responseCode"])) ? $data["responseCode"] : null,
                 "autorizacion" => isset($data["authorization"]) ? $data["authorization"] : null,
                 "ciudad" => isset($data["city"]) ? $data["city"] : "",
                 "recibo" => isset($data["receipt"]) ? $data["receipt"] : null,
@@ -771,7 +792,7 @@ class MsTransactionBank
     /**
      * Map a ms-transaction query response into the shape the legacy
      * .../pse/transactioninfomation.json endpoint returns for a transaction
-     * created by ms-transaction (SDK-1365 QA, BUG-02): `title_response` "OK",
+     * created by legacy (SDK-1365 QA, BUG-02): `title_response` by status,
      * `last_action` "update_transaction", and the legacy query's `data` keys
      * in the legacy order. The payer fields come masked from ms-transaction,
      * same as legacy returns them for these transactions.
@@ -795,11 +816,12 @@ class MsTransactionBank
         $payer = isset($data["payerInformation"]) && is_array($data["payerInformation"]) ? $data["payerInformation"] : array();
         $extrasEpaycoNew = isset($data["extrasEpayco"]) && is_array($data["extrasEpayco"]) ? $data["extrasEpayco"] : array();
         $responseCode = isset($data["responseCode"]) ? $data["responseCode"] : null;
+        $titles = self::queryTitleFromEstado(isset($data["status"]) ? $data["status"] : null);
 
         $mapped = array(
             "success" => true,
-            "title_response" => "OK",
-            "text_response" => isset($raw["message"]) ? $raw["message"] : null,
+            "title_response" => $titles ? $titles[0] : "OK",
+            "text_response" => $titles ? $titles[1] : (isset($raw["message"]) ? $raw["message"] : null),
             "last_action" => "update_transaction",
             "data" => array(
                 "ref_payco" => isset($data["refPayco"]) ? $data["refPayco"] : null,
@@ -834,10 +856,9 @@ class MsTransactionBank
                 "extras" => isset($data["extras"]) ? $data["extras"] : null,
                 // Constant in every legacy PSE query, whatever cod_error says.
                 "cc_network_response" => array("code" => "0000", "message" => "Franquicia no registrada"),
-                // Legacy echoes the stored extrasEpayco object as-is for these transactions.
-                "extras_epayco" => $extrasEpaycoNew ? $extrasEpaycoNew : array("extra5" => null),
+                "extras_epayco" => array("extra5" => isset($extrasEpaycoNew["extra5"]) ? $extrasEpaycoNew["extra5"] : null),
                 "transactionID" => isset($data["authorization"]) ? $data["authorization"] : null,
-                "ticketId" => isset($data["receipt"]) ? (string)$data["receipt"] : null,
+                "ticketId" => isset($data["receipt"]) ? self::asInteger($data["receipt"]) : null,
             ),
         );
 
