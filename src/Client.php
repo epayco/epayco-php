@@ -14,12 +14,29 @@ use WpOrg\Requests\Requests;
 class Client extends GraphqlClient
 {
 
-    const BASE_URL = "https://api.secure.payco.co";
-    const BASE_URL_SECURE = "https://secure.payco.co";
+    const BASE_URL = "https://eks-subscription-api-lumen-service.epayco.io";
+    const BASE_URL_SECURE = "https://eks-rest-pagos-service.epayco.io";
     const ENTORNO = "/restpagos";
-    const BASE_URL_APIFY = "https://apify.epayco.co";
+    const BASE_URL_APIFY = "https://eks-apify-service.epayco.io";
     const IV = "0000000000000000";
     const LENGUAGE = "php";
+
+    /**
+     * Seconds a bearer token from authentication() is reused: the same 14
+     * minutes the old cookie lasted, below the lifetime of the tokens issued by
+     * /v1/auth/login (1 h) and the apify /login (30 min).
+     */
+    const BEARER_TOKEN_TTL = 840;
+
+    /**
+     * Bearer tokens obtained by authentication(), cached only in this PHP
+     * process (one web request under mod_php/PHP-FPM, longer in a CLI worker).
+     * They used to live in a cookie named after the public key, which handed a
+     * valid merchant JWT to the end user's browser (no HttpOnly/Secure/SameSite)
+     * and made the SDK send as Bearer whatever that browser put in the cookie.
+     * @var array
+     */
+    private static $bearerTokens = array();
 
     /**
      * Request api epayco
@@ -50,8 +67,12 @@ class Client extends GraphqlClient
          * Resources ip, traslate keys
          */
         $util = new Util();
-        if ($method == "POST" && !is_null($data) && is_array($data) && !isset($data['extras_epayco'])) {
-            $data['extras_epayco'] = ["extra5" => "P42"];
+        if ($method == "POST" && !is_null($data) && is_array($data)) {
+            if (!isset($data['extras_epayco'])) {
+                $data['extras_epayco'] = ["extra5" => "P42"];
+            } elseif (is_array($data['extras_epayco']) && (!isset($data['extras_epayco']['extra5']) || $data['extras_epayco']['extra5'] === "")) {
+                $data['extras_epayco']['extra5'] = "P42";
+            }
         }
         /**
          * Switch traslate keys array petition in secure
@@ -63,12 +84,14 @@ class Client extends GraphqlClient
         }
         try {
             /**
-             * Set heaToken bearer
+             * Set heaToken bearer: one cache entry per key pair and login type
+             * (hashed so the raw keys are not kept as array keys). Never read
+             * from nor stored in $_COOKIE.
              */
-
-            $cookie_name = $api_key . ($apify ? "_apify" : "");
-            if (!isset($_COOKIE[$cookie_name])) {
-                //  echo "Cookie named '" . $cookie_name . "' is not set!";
+            $token_cache_key = hash("sha256", ($apify ? "apify" : "jwt") . "|" . $api_key . "|" . $private_key);
+            if (isset(self::$bearerTokens[$token_cache_key]) && self::$bearerTokens[$token_cache_key]["expires_at"] > time()) {
+                $bearer_token = self::$bearerTokens[$token_cache_key]["token"];
+            } else {
                 $dataAuth = $this->authentication($api_key, $private_key, $apify);
                 $json = json_decode($dataAuth);
                 if (!is_object($json)) {
@@ -87,11 +110,10 @@ class Client extends GraphqlClient
                     }
                     throw new ErrorException($msj, 422);
                 }
-                $cookie_value = $bearer_token;
-                setcookie($cookie_name, $cookie_value, time() + (60 * 14), "/");
-                //  echo "token con login".$bearer_token;
-            } else {
-                $bearer_token = $_COOKIE[$cookie_name];
+                self::$bearerTokens[$token_cache_key] = array(
+                    "token" => $bearer_token,
+                    "expires_at" => time() + self::BEARER_TOKEN_TTL,
+                );
             }
         } catch (\Exception $e) {
             $data = array(
@@ -157,6 +179,10 @@ class Client extends GraphqlClient
             }
 
             if ($response->status_code >= 400 && $response->status_code < 600) {
+                if ($response->status_code == 401) {
+                    // Token rejected before its TTL: log in again on the next call.
+                    unset(self::$bearerTokens[$token_cache_key]);
+                }
                 $body = $response->body;
 
 
