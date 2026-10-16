@@ -1038,10 +1038,7 @@ class MsTransactionDaviplata
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = MsTransactionBank::decodeResponse($response);
 
         return self::mapToLegacyShape($raw, $options);
     }
@@ -1102,10 +1099,7 @@ class MsTransactionDaviplata
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = MsTransactionBank::decodeResponse($response);
 
         return self::mapToLegacyShape($raw);
     }
@@ -1353,9 +1347,9 @@ class MsTransactionDaviplata
      * positive integer throws ErrorException 103 before any request (same as
      * getTransaction(); otherwise a value like "0388205367" would skip the
      * GET and could still be coerced to a real refPayco by the backend), a
-     * GET error (e.g. "Transacción # N no encontrada.") is returned in the
-     * legacy error shape, and a GET answer that is not JSON throws
-     * ErrorException 106 -- none of them reaches finishTransaction. Only a
+     * GET error (e.g. "Transacción # N no encontrada.") or a GET answer that
+     * is not JSON is returned in the legacy error shape -- none of them
+     * reaches finishTransaction. Only a
      * missing `ref_payco` goes straight to finishTransaction, which then
      * answers its own validation error without touching any transaction.
      *
@@ -1389,10 +1383,7 @@ class MsTransactionDaviplata
             } catch (\Exception $e) {
                 throw new ErrorException($epayco->lang, 101);
             }
-            $currentRaw = json_decode($current->body, true);
-            if (!is_array($currentRaw)) {
-                throw new ErrorException($epayco->lang, 106);
-            }
+            $currentRaw = MsTransactionBank::decodeResponse($current);
             if (empty($currentRaw["success"])) {
                 return self::buildLegacyErrorShape($currentRaw);
             }
@@ -1408,10 +1399,7 @@ class MsTransactionDaviplata
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = MsTransactionBank::decodeResponse($response);
 
         return self::mapConfirmToLegacyShape($raw);
     }
