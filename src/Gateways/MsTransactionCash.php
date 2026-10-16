@@ -854,10 +854,7 @@ class MsTransactionCash
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = MsTransactionBank::decodeResponse($response);
 
         return self::mapToLegacyShape($raw, $options, $medio);
     }
@@ -900,10 +897,7 @@ class MsTransactionCash
             throw new ErrorException($epayco->lang, 101);
         }
 
-        $raw = json_decode($response->body, true);
-        if (!is_array($raw)) {
-            throw new ErrorException($epayco->lang, 106);
-        }
+        $raw = MsTransactionBank::decodeResponse($response);
 
         return self::mapQueryToLegacyShape($raw, self::merchantIdFromToken($token));
     }
